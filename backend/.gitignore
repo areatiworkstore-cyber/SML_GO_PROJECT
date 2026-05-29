@@ -1,0 +1,39 @@
+# Se evita la subida de variables de entorno
+.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+.env
+
+# Cache
+.cache/
+
+# Python
+__pycache__/
+venv/
+*.pyc
+.pytest_cache/
+
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+
+# Database (opcional, si no quieres subir tu DB local)
+*.db
+*.sqlite
+*.sqlite3
+
+# Testing
+.coverage
+htmlcov/
+.tox/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
