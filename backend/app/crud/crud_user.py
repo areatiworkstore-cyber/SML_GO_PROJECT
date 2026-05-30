@@ -3,6 +3,9 @@ from app.models.user import User, RoleUser
 from app.schemas.user import UserCreate
 from app.core.security import get_password_hash
 
+'''
+Metodos CRUD para el modelo User
+'''
 def get_user_by_id(db: Session, user_id: int):
     return db.query(User).filter(User.id == user_id).first()
 
@@ -42,3 +45,12 @@ def create_user(db: Session, user_in: UserCreate) -> User:
         db.refresh(db_user)
         
     return db_user
+
+'''
+Metodos CRUD para el modelo RoleUser
+'''
+def get_role_user_by_id(db: Session, role_user_id: int):
+    return db.query(RoleUser).filter(RoleUser.id == role_user_id).first()
+
+def get_role_users(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(RoleUser).offset(skip).limit(limit).all()

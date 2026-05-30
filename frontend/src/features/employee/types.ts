@@ -4,8 +4,9 @@ export interface Employee {
     id: number;
     code: string;
     first_name: string;
+    last_name: string;
     document_number: string;
-    role: 'VENDEDOR' | 'ADMIN' | 'SUPERVISOR';
+    role: 'VENDEDOR' | 'ADMIN';
     email: string;
     phone?: string;
     status: 'ACTIVO' | 'INACTIVO';

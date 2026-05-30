@@ -20,7 +20,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { getTheme, type ThemeMode } from './theme';
 import { RouteItinerary } from './features/routes/components/RouteItinerary';
 import { ClientForm } from './features/clients/components/ClientForm';
-import { ClientList } from './features/clients/components/ClientList';
+import { CustomerPortfolio } from './features/clients/components/CustomerPortfolio';
 import { SellerAudit } from './features/audit/components/SellerAudit';
 import { AuthProvider, useAuth, Login } from './features/auth';
 import { NotificationProvider } from './context/NotificationContext';
@@ -323,7 +323,7 @@ function AppContent() {
           <Container maxWidth="xl" disableGutters>
             <ViewErrorBoundary>
               {activeView === 'agenda' && <RouteItinerary />}
-              {activeView === 'portfolio' && <ClientList />}
+              {activeView === 'portfolio' && <CustomerPortfolio />}
               {activeView === 'employees' && <EmployeeList />}
               {activeView === 'register' && <ClientForm />}
               {activeView === 'audit' && <SellerAudit />}

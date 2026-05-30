@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr
 
+# --- SCHEMA DE USER ---
 class UserBase(BaseModel):
     code: str
     first_name: str
@@ -38,17 +39,24 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     active: Optional[bool] = None
 
-class RoleUserResponse(BaseModel):
-    role_id: int
-    role_name: Optional[str] = None
-
-    class Config:
-        from_attributes = True
-
 class UserResponse(UserBase):
     id: int
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# --- SCHEMA DE ROL USUARIO ---
+class RoleUserBase(BaseModel):
+    user_id: int
+    role_id: int
+
+class RoleUserUpdate(RoleUserBase):
+    pass
+
+class RoleUserResponse(RoleUserBase):
+    id: int
 
     class Config:
         from_attributes = True

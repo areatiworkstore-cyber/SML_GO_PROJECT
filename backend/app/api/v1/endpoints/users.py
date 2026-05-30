@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user, check_roles
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, UserPerfilResponse
+from app.schemas.user import UserCreate, UserResponse, UserPerfilResponse, RoleUserResponse, RoleUserUpdate
 from app.crud import crud_user
 
 router = APIRouter()
@@ -43,7 +43,7 @@ def read_users(
     current_user: User = Depends(check_roles(["ADMIN"]))
 ):
     """
-    Retrieve all users (Sellers, Admins, etc. - Admin only).
+    Recupera todos los usuarios (Vendedores, Administradores, etc. - Solo Admin).
     """
     return crud_user.get_users(db, skip=skip, limit=limit)
 
@@ -53,6 +53,62 @@ def read_user_me(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Get current logged-in user profile.
+    Obtiene el perfil del usuario actual.
     """
     return current_user
+
+@router.get("/role_users", response_model=List[RoleUserResponse], status_code=status.HTTP_200_OK)
+def read_role_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_roles(["ADMIN"]))
+):
+    """
+    Recupera todos los usuarios asignados a un rol (Solo Admin).
+    """
+    role_users = crud_user.get_role_users(db, skip=skip, limit=limit)
+    return role_users
+
+@router.get("/role/{role_user_id}", response_model=RoleUserResponse, status_code=status.HTTP_200_OK)
+def read_role_user(
+    role_user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_roles(["ADMIN"]))
+):
+    """
+    Obtiene un usuario específico asignado a un rol por su ID (Solo Admin).
+    """
+    role_user = crud_user.get_role_user_by_id(db, role_user_id=role_user_id)
+    if not role_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El usuario asignado al rol no existe."
+        )
+    return role_user
+
+
+@router.put("/role/{role_user_id}", response_model=RoleUserResponse, status_code=status.HTTP_200_OK)
+def update_role_user(
+    role_user_id: int,
+    role_user_in: RoleUserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_roles(["ADMIN"]))
+):
+    """
+    Actualiza un usuario específico asignado a un rol por su ID (Solo Admin).
+    """
+    role_user = crud_user.get_role_user_by_id(db, role_user_id=role_user_id)
+    if not role_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El usuario asignado al rol no existe."
+        )
+        
+    # Actualizamos dinámicamente los campos enviados (ej. cambiar el role_id de un usuario)
+    for field, value in role_user_in.model_dump(exclude_unset=True).items():
+        setattr(role_user, field, value)
+        
+    db.commit()
+    db.refresh(role_user)
+    return role_user

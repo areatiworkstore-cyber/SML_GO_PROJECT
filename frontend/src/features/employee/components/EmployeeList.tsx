@@ -20,16 +20,24 @@ import { EmployeeModal } from './EmployeeModal';
 import { useNotification } from '../../../context/NotificationContext';
 import { employeeService } from '../services';
 
+// Diccionario estático para mapear los IDs de los roles de la base de datos
+const ROLE_MAP: Record<number, string> = {
+    1: 'ADMIN',
+    2: 'VENDEDOR',
+    3: 'SUPERVISOR DE CAMPO' // Agregado por si manejas el tercer rol del modal
+};
+
 export const EmployeeList: React.FC = () => {
     const { showSuccess, showError } = useNotification();
     const [searchTerm, setSearchTerm] = useState('');
-    const [employees, setEmployees] = useState<any[]>([]); // Usamos any de forma temporal para acoplar el esquema de la API
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [roleAssignments, setRoleAssignments] = useState<any[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
     const [modalState, setModalState] = useState<{
         open: boolean;
         mode: 'create' | 'edit' | 'view';
-        data: any | null;
+        data: Employee | null;
     }>({
         open: false,
         mode: 'create',
@@ -43,9 +51,13 @@ export const EmployeeList: React.FC = () => {
     const loadEmployees = async () => {
         try {
             setLoading(true);
-            // Consumimos el endpoint real /users/?skip=0&limit=100
-            const data = await employeeService.getEmployees(0, 100);
-            setEmployees(data);
+            const [usersData, rolesData] = await Promise.all([
+                employeeService.getEmployees(0, 100),
+                employeeService.getRoleUsers(0, 100)
+            ]);
+
+            setEmployees(usersData || []);
+            setRoleAssignments(rolesData || []);
         } catch (error) {
             showError(error);
         } finally {
@@ -53,7 +65,7 @@ export const EmployeeList: React.FC = () => {
         }
     };
 
-    const handleOpenModal = (mode: 'create' | 'edit' | 'view', employee: any = null) => {
+    const handleOpenModal = (mode: 'create' | 'edit' | 'view', employee: Employee | null = null) => {
         setModalState({ open: true, mode, data: employee });
     };
 
@@ -76,9 +88,9 @@ export const EmployeeList: React.FC = () => {
     };
 
     const handleDeleteEmployee = async (id: number) => {
-        if (window.confirm('¿Está seguro de eliminar este empleado?')) {
+        if (window.confirm('¿Está seguro de desactivar/eliminar este empleado?')) {
             try {
-                showSuccess('Empleado eliminado correctamente');
+                showSuccess('Empleado actualizado correctamente');
                 loadEmployees();
             } catch (error) {
                 showError(error);
@@ -86,17 +98,11 @@ export const EmployeeList: React.FC = () => {
         }
     };
 
-    // Función auxiliar para concatenar el nombre completo según el esquema de tu base de datos
-    const buildFullName = (emp: any) => {
-        const parts = [
-            emp.first_name,
-            emp.first_surname,
-        ].filter(Boolean); // Elimina valores null o vacíos
-
+    const buildFullName = (emp: Employee) => {
+        const parts = [emp.first_name, emp.last_name || (emp as any).first_surname].filter(Boolean);
         return parts.length > 0 ? parts.join(' ') : 'Sin Nombre';
     };
 
-    // Filtrado adaptado a los nuevos campos estructurados del backend
     const filteredEmployees = employees.filter(emp => {
         const fullName = buildFullName(emp).toLowerCase();
         const code = (emp.code || '').toLowerCase();
@@ -114,7 +120,7 @@ export const EmployeeList: React.FC = () => {
                         Control de Personal Interno
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        Gestión de accesos, roles y credenciales para el personal de Grupo Upgrade.
+                        Gestión de accesos, roles y credenciales para el personal de SML Lubricantes.
                     </Typography>
                 </Box>
                 <Button
@@ -164,57 +170,39 @@ export const EmployeeList: React.FC = () => {
                                     <TableCell sx={{ fontWeight: 'bold' }}>N° Documento</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold' }}>Rol del Sistema</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold' }}>Correo Electrónico</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold' }}>Estado</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Acciones</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {filteredEmployees.map((emp) => {
-                                    // Evaluamos si el usuario está activo (si no viene 'active', asumimos true por defecto)
-                                    const isActive = emp.active !== false;
+                                    // 1. Buscamos la asignación correspondiente en la respuesta de /role_users
+                                    const userRoleAssignment = roleAssignments.find(ra => ra.user_id === emp.id);
 
-                                    // Fallback para renderizar el rol del sistema según el prefijo del código o datos existentes
-                                    const systemRole = emp.role || (emp.code?.startsWith('ADM') ? 'ADMIN' : 'VENDEDOR');
+                                    // 2. Extraemos el role_id numérico de la asignación
+                                    const roleId = userRoleAssignment?.role_id;
+
+                                    // 3. Resolvemos usando el mapeo de IDs confiables, o fallback por texto si fuera necesario
+                                    const systemRole = (roleId && ROLE_MAP[roleId]) ||
+                                        userRoleAssignment?.role_details?.role ||
+                                        userRoleAssignment?.role?.role ||
+                                        (emp.code?.startsWith('ADM') ? 'ADMIN' : 'VENDEDOR');
 
                                     return (
                                         <TableRow key={emp.id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
                                             <TableCell>
                                                 <Chip label={emp.code || `ID-${emp.id}`} size="small" variant="outlined" sx={{ fontWeight: 'bold' }} />
                                             </TableCell>
-
-                                            {/* Nombre Completo Concatenado */}
-                                            <TableCell sx={{ fontWeight: 'bold' }}>
-                                                {buildFullName(emp)}
-                                            </TableCell>
-
+                                            <TableCell sx={{ fontWeight: 'bold' }}>{buildFullName(emp)}</TableCell>
                                             <TableCell>{emp.document_number}</TableCell>
-
-                                            {/* Rol Dinámico */}
                                             <TableCell>
                                                 <Chip
-                                                    label={systemRole}
+                                                    label={systemRole.toUpperCase()}
                                                     size="small"
-                                                    color={systemRole === 'ADMIN' ? 'secondary' : 'info'}
+                                                    color={systemRole.toUpperCase() === 'ADMIN' || systemRole.toUpperCase() === 'ADMINISTRADOR' ? 'secondary' : 'info'}
                                                     sx={{ fontWeight: 'bold', borderRadius: 1 }}
                                                 />
                                             </TableCell>
-
                                             <TableCell>{emp.email}</TableCell>
-
-                                            {/* Estado Corregido para MUI v9 usando sx estilo soft */}
-                                            <TableCell>
-                                                <Chip
-                                                    label={isActive ? 'ACTIVO' : 'INACTIVO'}
-                                                    size="small"
-                                                    sx={{
-                                                        fontWeight: 'bold',
-                                                        bgcolor: isActive ? 'rgba(46, 125, 50, 0.12)' : 'rgba(211, 47, 47, 0.12)',
-                                                        color: isActive ? 'success.dark' : 'error.dark',
-                                                        border: 'none'
-                                                    }}
-                                                />
-                                            </TableCell>
-
                                             <TableCell align="center">
                                                 <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
                                                     <Tooltip title="Ver detalles">
@@ -233,7 +221,7 @@ export const EmployeeList: React.FC = () => {
                                 })}
                                 {filteredEmployees.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary', fontStyle: 'italic' }}>
+                                        <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary', fontStyle: 'italic' }}>
                                             No se encontraron empleados registrados en el sistema.
                                         </TableCell>
                                     </TableRow>
@@ -241,8 +229,9 @@ export const EmployeeList: React.FC = () => {
                             </TableBody>
                         </Table>
                     </TableContainer>
-                )}
-            </Paper>
+                )
+                }
+            </Paper >
 
             <EmployeeModal
                 open={modalState.open}
@@ -251,7 +240,7 @@ export const EmployeeList: React.FC = () => {
                 onClose={handleCloseModal}
                 onSave={handleSaveEmployee}
             />
-        </Box>
+        </Box >
     );
 };
 

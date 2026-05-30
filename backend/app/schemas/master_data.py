@@ -24,3 +24,16 @@ class ClientGroupResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# --- SCHEMA DE ROL ---
+class RoleBase(BaseModel):
+    role: str
+
+class RoleUpdate(RoleBase):
+    pass
+
+class RoleResponse(RoleBase):
+    id: int
+
+    class Config:
+        from_attributes = True

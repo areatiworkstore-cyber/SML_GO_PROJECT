@@ -18,7 +18,7 @@ def create_client(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Register a new client with GPS coordinates (latitud/longitud).
+    Registra un nuevo cliente con coordenadas GPS (latitud/longitud).
     """
     # Check if client code is already registered for this seller/user
     db_client = crud_client.get_client_by_code_and_user(
@@ -39,7 +39,8 @@ def read_clients(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Get clients list. Admin can query all or filter by user_id, sellers will only query their own clients.
+    Obtiene la lista de clientes. Admin puede consultar todos o filtrar por user_id, 
+    los vendedores solo consultarán sus propios clientes.
     """
     # Check if user is seller (VENDEDOR). If so, force filter to their own ID.
     roles = [ru.role_details.role for ru in current_user.roles]
@@ -56,16 +57,16 @@ def read_client(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Get client details by ID.
+    Obtiene los detalles de un cliente por ID.
     """
     client = crud_client.get_client_by_id(db, client_id=client_id)
     if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
         
     # Check authorization (Sellers can only access their own clients)
     roles = [ru.role_details.role for ru in current_user.roles]
     if "ADMIN" not in roles and client.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+        raise HTTPException(status_code=403, detail="No tienes permisos para realizar esta acción")
         
     return client
 
@@ -78,15 +79,15 @@ def update_client(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Update client details (including GPS latitud/longitud coordinates).
+    Actualiza los detalles de un cliente (incluyendo coordenadas GPS latitud/longitud).
     """
     client = crud_client.get_client_by_id(db, client_id=client_id)
     if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
         
     roles = [ru.role_details.role for ru in current_user.roles]
     if "ADMIN" not in roles and client.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+        raise HTTPException(status_code=403, detail="No tienes permisos para realizar esta acción")
         
     return crud_client.update_client(db, db_client=client, client_in=client_in)
 
@@ -98,16 +99,16 @@ def get_maps_redirect_url(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Returns a Google Maps redirect URL for the client's coordinates.
+    Retorna una URL de redirección a Google Maps para las coordenadas del cliente.
     """
     client = crud_client.get_client_by_id(db, client_id=client_id)
     if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
     if client.latitud is None or client.longitud is None:
         raise HTTPException(
             status_code=400,
-            detail="Client coordinates (latitud/longitud) are not registered."
+            detail="Las coordenadas del cliente (latitud/longitud) no están registradas."
         )
-    # Return redirect URL
+    # Retorna URL de redirección a Google Maps
     url = f"https://www.google.com/maps/search/?api=1&query={client.latitud},{client.longitud}"
     return {"url": url}

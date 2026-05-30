@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
+# --- SCHEMA DE CLIENTE ---
 class ClientBase(BaseModel):
     code: str
     name: str

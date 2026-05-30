@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.master_data import BusinessType, DocumentType, ClientGroup
+from app.models.master_data import BusinessType, DocumentType, ClientGroup, Role
 
 
 # --- CRUD TIPO DE NEGOCIO ---
@@ -48,4 +48,19 @@ def get_client_groups(db: Session):
     Obtiene todos los grupos de clientes del sistema.
     """
     query = db.query(ClientGroup)
+    return query.all()
+
+# --- CRUD ROL ---
+def get_role_by_id(db: Session, role_id: int):
+    """
+    Obtiene un rol específico por su ID.
+    """
+    return db.query(Role).filter(Role.id == role_id).first()
+
+
+def get_roles(db: Session):
+    """
+    Obtiene todos los roles del sistema.
+    """
+    query = db.query(Role)
     return query.all()

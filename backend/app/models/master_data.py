@@ -29,7 +29,6 @@ class ClientGroup(Base):
 
     clients = relationship("Client", back_populates="client_group")
 
-
 class Role(Base):
     __tablename__ = "role"
 
@@ -37,3 +36,4 @@ class Role(Base):
     role = Column(String(20), nullable=False)
 
     users = relationship("RoleUser", back_populates="role_details")
+

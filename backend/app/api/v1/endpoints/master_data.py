@@ -3,9 +3,10 @@ from fastapi import APIRouter, Depends, status, Query, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user
+from app.api.deps import check_roles
 from app.models.user import User
 
-from app.schemas.master_data import BusinessTypeResponse, DocumentTypeResponse, ClientGroupResponse
+from app.schemas.master_data import BusinessTypeResponse, DocumentTypeResponse, ClientGroupResponse, RoleResponse, RoleUpdate
 from app.crud import crud_master_data
 
 router = APIRouter()
@@ -59,3 +60,27 @@ def get_client_groups(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El grupo de cliente no existe")
         return client_group
     return crud_master_data.get_client_groups(db)
+
+@router.get("/roles", response_model=List[RoleResponse], status_code=status.HTTP_200_OK)
+def read_roles(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_roles(["ADMIN"]))  # ← SOLO ADMINS pueden ver esto
+):
+    """
+    Endpoint para listar todos los roles disponibles.
+    """
+    return crud_master_data.get_roles(db)
+
+@router.get("/role/{role_id}", response_model=RoleResponse, status_code=status.HTTP_200_OK)
+def read_role(
+    role_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_roles(["ADMIN"]))  # ← SOLO ADMINS pueden ver esto
+):
+    """
+    Endpoint para obtener un rol por ID.
+    """
+    role = crud_master_data.get_role_by_id(db, role_id=role_id)
+    if not role:
+        raise HTTPException(status_code=404, detail="Role no encontrado")
+    return role

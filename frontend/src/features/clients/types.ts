@@ -37,6 +37,18 @@ export interface ClientCreate {
   observation?: string;
 }
 
+export interface ClientResponse {
+  id: number;
+  code: string;
+  name: string;
+  document_number: string;
+  cellphone: string | null;
+  active: boolean;
+  user_id: number;
+  address: string;
+  observation: string | null;
+}
+
 export interface BusinessType {
   id: number;
   description: string;
