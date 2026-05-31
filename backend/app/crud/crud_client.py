@@ -45,3 +45,12 @@ def update_client(db: Session, db_client: Client, client_in: ClientUpdate) -> Cl
     db.commit()
     db.refresh(db_client)
     return db_client
+
+def delete_client(db: Session, client_id: int):
+    db_client = get_client_by_id(db, client_id)
+    if db_client:
+        db_client.active = False
+        db.add(db_client)
+        db.commit()
+        db.refresh(db_client)
+    return db_client

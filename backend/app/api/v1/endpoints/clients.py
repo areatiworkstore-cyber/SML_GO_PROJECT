@@ -112,3 +112,23 @@ def get_maps_redirect_url(
     # Retorna URL de redirección a Google Maps
     url = f"https://www.google.com/maps/search/?api=1&query={client.latitud},{client.longitud}"
     return {"url": url}
+
+@router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_client(
+    client_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Desactiva/elimina un cliente por ID.
+    """
+    client = crud_client.get_client_by_id(db, client_id=client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+        
+    roles = [ru.role_details.role for ru in current_user.roles]
+    if "ADMIN" not in roles and client.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tienes permisos para realizar esta acción")
+        
+    crud_client.delete_client(db, client_id=client_id)
+    return None
