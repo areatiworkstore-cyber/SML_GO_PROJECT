@@ -19,12 +19,16 @@ import { useAuth } from '../../auth';
 
 interface ClientFormProps {
   initialData?: ClientCreate;
+  clientId?: number;
   onSubmitSuccess?: () => void;
+  onCancel?: () => void;
 }
 
 export const ClientForm: React.FC<ClientFormProps> = ({
   initialData,
+  clientId,
   onSubmitSuccess,
+  onCancel,
 }) => {
   const { showSuccess, showError } = useNotification();
   const { user } = useAuth();
@@ -100,8 +104,13 @@ export const ClientForm: React.FC<ClientFormProps> = ({
 
     setSubmitting(true);
     try {
-      await clientService.createClient(formData);
-      showSuccess('¡Cliente registrado con éxito en el sistema!');
+      if (clientId) {
+        await clientService.updateClient(clientId, formData);
+        showSuccess('¡Cliente actualizado con éxito!');
+      } else {
+        await clientService.createClient(formData);
+        showSuccess('¡Cliente registrado con éxito en el sistema!');
+      }
 
       setFormData({
         code: '',
@@ -343,25 +352,41 @@ export const ClientForm: React.FC<ClientFormProps> = ({
             </Grid>
           </Grid>
 
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            color="primary"
-            disabled={submitting}
-            sx={{
-              mt: 4,
-              py: 1.5,
-              fontWeight: 'bold',
-              fontSize: '1rem',
-              color: 'secondary.contrastText',
-              '&:hover': {
-                backgroundColor: 'primary.dark',
-              },
-            }}
-          >
-            {submitting ? <CircularProgress size={24} color="inherit" /> : 'Guardar Registro'}
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
+            {onCancel && (
+              <Button
+                variant="outlined"
+                color="inherit"
+                fullWidth
+                onClick={onCancel}
+                sx={{
+                  py: 1.5,
+                  fontWeight: 'bold',
+                  fontSize: '1rem',
+                }}
+              >
+                Cancelar
+              </Button>
+            )}
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              color="primary"
+              disabled={submitting}
+              sx={{
+                py: 1.5,
+                fontWeight: 'bold',
+                fontSize: '1rem',
+                color: 'secondary.contrastText',
+                '&:hover': {
+                  backgroundColor: 'primary.dark',
+                },
+              }}
+            >
+              {submitting ? <CircularProgress size={24} color="inherit" /> : (clientId ? 'Guardar Cambios' : 'Guardar Registro')}
+            </Button>
+          </Box>
         </Box>
       </Paper>
     </Box>

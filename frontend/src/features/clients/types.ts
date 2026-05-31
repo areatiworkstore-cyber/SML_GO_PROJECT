@@ -37,15 +37,35 @@ export interface ClientCreate {
   observation?: string;
 }
 
+export interface ClientUpdate {
+  name?: string;
+  address?: string;
+  district_id?: number;
+  business_type_id?: number;
+  client_group_id?: number;
+  cellphone?: string;
+  telephone?: string;
+  active?: boolean;
+  latitud?: number;
+  longitud?: number;
+  user_id?: number;
+  observation?: string;
+}
+
 export interface ClientResponse {
   id: number;
   code: string;
   name: string;
   document_number: string;
+  document_type_id: number;
   cellphone: string | null;
+  telephone: string | null;
   active: boolean;
   user_id: number;
   address: string;
+  district_id: number;
+  business_type_id: number;
+  client_group_id: number;
   observation: string | null;
 }
 

@@ -63,6 +63,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     useEffect(() => {
+        const handleUnauthorized = () => {
+            logout();
+        };
+        window.addEventListener('auth:unauthorized', handleUnauthorized);
+
         const savedUser = localStorage.getItem('user');
         const savedRoles = localStorage.getItem('user_roles');
 
@@ -75,6 +80,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
             setLoading(false);
         }
+
+        return () => {
+            window.removeEventListener('auth:unauthorized', handleUnauthorized);
+        };
     }, [token]);
 
     const login = async (newToken: string, role: string) => {

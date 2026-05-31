@@ -28,7 +28,7 @@ const ROLE_MAP: Record<number, string> = {
 };
 
 export const EmployeeList: React.FC = () => {
-    const { showSuccess, showError } = useNotification();
+    const { showSuccess, showError, showConfirm } = useNotification();
     const [searchTerm, setSearchTerm] = useState('');
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [roleAssignments, setRoleAssignments] = useState<any[]>([]);
@@ -88,7 +88,11 @@ export const EmployeeList: React.FC = () => {
     };
 
     const handleDeleteEmployee = async (id: number) => {
-        if (window.confirm('¿Está seguro de desactivar/eliminar este empleado?')) {
+        const confirmed = await showConfirm({
+            title: 'Confirmar Eliminación',
+            message: '¿Está seguro de desactivar/eliminar este empleado?'
+        });
+        if (confirmed) {
             try {
                 showSuccess('Empleado actualizado correctamente');
                 loadEmployees();

@@ -83,7 +83,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 // Reemplaza PaperProps por slotProps.paper 👇
                 slotProps={{
                     paper: {
-                        sx: { borderRadius: 2, p: 1 }
+                        sx: { borderRadius: 2, p: 1, bgcolor: 'background.paper', color: 'text.primary' }
                     }
                 }}
             >

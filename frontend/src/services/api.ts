@@ -38,9 +38,7 @@ async function executeRequest<T>(endpoint: string, options: FetchOptions = {}): 
     localStorage.removeItem('user');
     localStorage.removeItem('user_roles');
 
-    if (!endpoint.includes('/auth/login')) {
-      window.location.reload();
-    }
+    window.dispatchEvent(new Event('auth:unauthorized'));
     throw new Error('Sesión expirada o no autorizada.');
   }
 
