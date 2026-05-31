@@ -82,17 +82,28 @@ function AppContent() {
     setMobileOpen(!mobileOpen);
   };
 
+  React.useEffect(() => {
+    if (activeView === 'employees' && user?.role !== 'ADMINISTRADOR' && user?.role !== 'ADMIN') {
+      setActiveView('agenda');
+    }
+  }, [activeView, user]);
+
   if (!isAuthenticated) {
     return <Login />;
   }
 
-  const menuItems = [
+  const baseMenuItems = [
     { id: 'agenda', label: 'Agenda de Visitas', icon: '📅' },
     { id: 'portfolio', label: 'Cartera Clientes', icon: '👥' },
     { id: 'employees', label: 'Empleados', icon: '💼' },
     { id: 'register', label: 'Registrar Cliente', icon: '📝' },
     { id: 'audit', label: 'Auditoría Vendedores', icon: '🛡️' },
   ] as const;
+
+  const menuItems = baseMenuItems.filter(item => {
+    if (item.id === 'employees' && user?.role !== 'ADMINISTRADOR' && user?.role !== 'ADMIN') return false;
+    return true;
+  });
 
   const drawerContent = (
     <Box

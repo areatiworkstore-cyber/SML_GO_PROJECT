@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user, check_roles
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, UserPerfilResponse, RoleUserResponse, RoleUserUpdate
+from app.schemas.user import UserCreate, UserResponse, UserPerfilResponse, RoleUserResponse, RoleUserUpdate, UserUpdate
 from app.crud import crud_user
 
 router = APIRouter()
@@ -47,6 +47,23 @@ def read_users(
     """
     return crud_user.get_users(db, skip=skip, limit=limit)
 
+@router.put("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
+def update_user(
+    user_id: int,
+    user_in: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_roles(["ADMIN"]))
+):
+    """
+    Actualiza los datos de un usuario (Solo Admin).
+    """
+    db_user = crud_user.get_user_by_id(db, user_id=user_id)
+    if not db_user:
+        raise HTTPException(
+            status_code=404,
+            detail="Usuario no encontrado"
+        )
+    return crud_user.update_user(db, db_user=db_user, user_in=user_in.model_dump(exclude_unset=True))
 
 @router.get("/me", response_model=UserPerfilResponse)
 def read_user_me(

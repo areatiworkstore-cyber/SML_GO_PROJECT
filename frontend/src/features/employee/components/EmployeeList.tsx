@@ -66,7 +66,13 @@ export const EmployeeList: React.FC = () => {
     };
 
     const handleOpenModal = (mode: 'create' | 'edit' | 'view', employee: Employee | null = null) => {
-        setModalState({ open: true, mode, data: employee });
+        let employeeData = employee;
+        if (employee) {
+            const userRoleAssignment = roleAssignments.find(ra => ra.user_id === employee.id);
+            const roleId = userRoleAssignment?.role_id;
+            employeeData = { ...employee, role: roleId || '' } as any;
+        }
+        setModalState({ open: true, mode, data: employeeData });
     };
 
     const handleCloseModal = () => {
@@ -75,9 +81,15 @@ export const EmployeeList: React.FC = () => {
 
     const handleSaveEmployee = async (formData: any) => {
         try {
+            const payload = {
+                ...formData,
+                role_ids: formData.role ? [formData.role] : []
+            };
             if (modalState.mode === 'create') {
+                await employeeService.createEmployee(payload);
                 showSuccess('Empleado registrado exitosamente');
-            } else if (modalState.mode === 'edit') {
+            } else if (modalState.mode === 'edit' && modalState.data?.id) {
+                await employeeService.updateEmployee(modalState.data.id, payload);
                 showSuccess('Empleado actualizado exitosamente');
             }
             handleCloseModal();

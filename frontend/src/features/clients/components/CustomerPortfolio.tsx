@@ -31,6 +31,7 @@ import type { ClientResponse, ClientUpdate, ClientCreate } from '../types';
 import type { Employee } from '../../employee/types';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import { useAuth } from '../../auth';
 import { ClientForm } from './ClientForm';
 
 const DOC_TYPES: Record<number, string> = { 1: 'DNI', 2: 'RUC' };
@@ -49,6 +50,8 @@ interface AdvisorData {
 }
 
 export const CustomerPortfolio: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'ADMINISTRADOR';
   const { showSuccess, showError, showConfirm } = useNotification();
   const [searchTerm, setSearchTerm] = useState('');
   const [advisors, setAdvisors] = useState<AdvisorData[]>([]);
@@ -74,8 +77,22 @@ export const CustomerPortfolio: React.FC = () => {
   }, [viewModalOpen, selectedClientData]);
 
   useEffect(() => {
-    loadAdvisors();
-  }, []);
+    if (isAdmin) {
+      loadAdvisors();
+    } else if (user) {
+      const myAdvisorData: AdvisorData = {
+        id: user.id,
+        code: user.code,
+        first_name: user.first_name,
+        second_name: user.second_name || null,
+        first_surname: user.first_surname,
+        second_surname: user.second_surname || null,
+        email: user.email || '',
+        role: user.role
+      };
+      handleExplorePortfolio(myAdvisorData);
+    }
+  }, [isAdmin, user]);
 
   const loadAdvisors = async () => {
     try {
@@ -223,7 +240,7 @@ export const CustomerPortfolio: React.FC = () => {
             }
           </Typography>
         </Box>
-        {selectedAdvisor && (
+        {selectedAdvisor && isAdmin && (
           <Button variant="outlined" color="inherit" onClick={handleBackToList} sx={{ textTransform: 'none', fontWeight: 'bold' }}>
             ← Volver
           </Button>
@@ -231,7 +248,7 @@ export const CustomerPortfolio: React.FC = () => {
       </Box>
 
       {/* SECCIÓN 1: VISTA GENERAL DE TARJETAS (ASESORES) */}
-      {!selectedAdvisor && (
+      {!selectedAdvisor && isAdmin && (
         <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 4, bgcolor: 'background.paper' }}>
           <Box sx={{ mb: 4, display: 'flex', justifyContent: 'flex-end' }}>
             <TextField

@@ -6,6 +6,7 @@ import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
+import IconButton from '@mui/material/IconButton';
 import Grid from '@mui/material/Grid';
 import CircularProgress from '@mui/material/CircularProgress';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -30,6 +31,12 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({ open, onClose, onS
     // Estados añadidos para el manejo dinámico de roles
     const [roles, setRoles] = useState<any[]>([]);
     const [isLoadingRoles, setIsLoadingRoles] = useState<boolean>(false);
+
+    const [showPassword, setShowPassword] = useState(false);
+    const handleClickShowPassword = () => setShowPassword((show) => !show);
+    const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+    };
 
     const { control, handleSubmit, reset } = useForm({
         defaultValues: {
@@ -315,7 +322,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({ open, onClose, onS
                         </Grid>
 
                         {/* CONTRASEÑA */}
-                        {isCreate && (
+                        {!isView && (
                             <Grid size={{ xs: 12, sm: 6 }}>
                                 <Controller
                                     name="password"
@@ -323,12 +330,28 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({ open, onClose, onS
                                     render={({ field }) => (
                                         <TextField
                                             {...field}
-                                            type="password"
-                                            label="Contraseña"
+                                            type={showPassword ? 'text' : 'password'}
+                                            label={isCreate ? "Contraseña" : "Nueva Contraseña (Opcional)"}
                                             fullWidth
                                             size="small"
-                                            required
-                                            slotProps={{ htmlInput: { maxLength: 255 } }}
+                                            required={isCreate}
+                                            slotProps={{
+                                                htmlInput: { maxLength: 255 },
+                                                input: {
+                                                    endAdornment: (
+                                                        <InputAdornment position="end">
+                                                            <IconButton
+                                                                onClick={handleClickShowPassword}
+                                                                onMouseDown={handleMouseDownPassword}
+                                                                edge="end"
+                                                                size="small"
+                                                            >
+                                                                {showPassword ? '🙈' : '👁️'}
+                                                            </IconButton>
+                                                        </InputAdornment>
+                                                    )
+                                                }
+                                            }}
                                         />
                                     )}
                                 />
@@ -336,7 +359,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({ open, onClose, onS
                         )}
 
                         {/* ROL DE SISTEMA - ACTUALIZADO A DINÁMICO */}
-                        <Grid size={{ xs: 12, sm: isCreate ? 6 : 12 }}>
+                        <Grid size={{ xs: 12, sm: !isView ? 6 : 12 }}>
                             <Controller
                                 name="role"
                                 control={control}
@@ -369,7 +392,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({ open, onClose, onS
                                             </MenuItem>
                                         ) : (
                                             roles.map((roleItem) => (
-                                                <MenuItem key={roleItem.id} value={roleItem.role}>
+                                                <MenuItem key={roleItem.id} value={roleItem.id}>
                                                     {roleItem.role === 'ADMIN' ? 'Administrador' : roleItem.role === 'VENDEDOR' ? 'Asesor de Ventas' : roleItem.role}
                                                 </MenuItem>
                                             ))

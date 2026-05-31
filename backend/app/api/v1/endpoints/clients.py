@@ -20,6 +20,10 @@ def create_client(
     """
     Registra un nuevo cliente con coordenadas GPS (latitud/longitud).
     """
+    roles = [ru.role_details.role for ru in current_user.roles]
+    if "ADMIN" not in roles:
+        client_in.user_id = current_user.id
+
     # Check if client code is already registered for this seller/user
     db_client = crud_client.get_client_by_code_and_user(
         db, code=client_in.code, user_id=client_in.user_id

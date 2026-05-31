@@ -46,6 +46,25 @@ def create_user(db: Session, user_in: UserCreate) -> User:
         
     return db_user
 
+def update_user(db: Session, db_user: User, user_in: dict) -> User:
+    role_ids = user_in.pop("role_ids", None)
+    
+    for field, value in user_in.items():
+        if field == "password":
+            if value: # Solo actualiza si hay un nuevo password
+                setattr(db_user, field, get_password_hash(value))
+        elif value is not None:
+            setattr(db_user, field, value)
+            
+    if role_ids is not None:
+        db.query(RoleUser).filter(RoleUser.user_id == db_user.id).delete()
+        for r_id in role_ids:
+            db.add(RoleUser(user_id=db_user.id, role_id=r_id))
+            
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
 '''
 Metodos CRUD para el modelo RoleUser
 '''

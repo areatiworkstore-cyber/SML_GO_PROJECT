@@ -34,10 +34,13 @@ class UserUpdate(BaseModel):
     second_name: Optional[str] = None
     first_surname: Optional[str] = None
     second_surname: Optional[str] = None
+    document_type_id: Optional[int] = None
+    document_number: Optional[str] = None
     cellphone: Optional[str] = None
     email: Optional[EmailStr] = None
     password: Optional[str] = None
     active: Optional[bool] = None
+    role_ids: Optional[List[int]] = None
 
 class UserResponse(UserBase):
     id: int

@@ -12,6 +12,10 @@ export const employeeService = {
         return apiClient.post<Employee>('/users/', employee);
     },
 
+    updateEmployee(id: number, employee: any): Promise<Employee> {
+        return apiClient.put<Employee>(`/users/${id}`, employee);
+    },
+
     /**
      * Obtiene la cartera de clientes asignada de manera exclusiva a un asesor
      */
