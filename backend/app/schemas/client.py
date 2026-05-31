@@ -36,6 +36,9 @@ class ClientUpdate(BaseModel):
     user_id: Optional[int] = None
     observation: Optional[str] = None
 
+class ClientNextCodeResponse(BaseModel):
+    next_code: str
+
 class ClientResponse(ClientBase):
     id: int
     user_id: int

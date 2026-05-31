@@ -49,10 +49,88 @@ interface AdvisorData {
   role?: string;
 }
 
+const IMPORT_COLUMNS = [
+  'Dia_visita', 'codigo_vend', 'nombre_completo_vendedor', 'codigo_cliente',
+  'nombre o razon social del cliente', 'tipo_documento', 'num_documento',
+  'latitud', 'longitud', 'direccion', 'distrito', 'provincia', 'departamento',
+  'tipo_negocio', 'grupo_cliente', 'telefono', 'celular',
+];
+
+interface ImportResult {
+  total_registros: number;
+  creados: number;
+  omitidos: number;
+  errores: Array<{ fila: number; error: string }>;
+}
+
 export const CustomerPortfolio: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'ADMINISTRADOR';
   const { showSuccess, showError, showConfirm } = useNotification();
+
+  // --- IMPORT MODAL STATE ---
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importDragging, setImportDragging] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importFileError, setImportFileError] = useState<string>('');
+  const importInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImportOpen = () => {
+    setImportOpen(true);
+    setImportFile(null);
+    setImportResult(null);
+    setImportFileError('');
+  };
+
+  const handleImportClose = () => {
+    if (importLoading) return;
+    setImportOpen(false);
+    setImportFile(null);
+    setImportResult(null);
+    setImportFileError('');
+  };
+
+  const validateFile = (file: File): boolean => {
+    if (!file.name.endsWith('.xlsx')) {
+      setImportFileError('Solo se aceptan archivos con extensión .xlsx');
+      return false;
+    }
+    setImportFileError('');
+    return true;
+  };
+
+  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setImportDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && validateFile(file)) setImportFile(file);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && validateFile(file)) setImportFile(file);
+    e.target.value = '';
+  };
+
+  const handleImportSubmit = async () => {
+    if (!importFile) return;
+    setImportLoading(true);
+    setImportResult(null);
+    setImportFileError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      const result = await apiClient.postForm<ImportResult>('/clients/import', formData);
+      setImportResult(result);
+      if (result.creados > 0 && selectedAdvisor) handleExplorePortfolio(selectedAdvisor);
+    } catch (error: any) {
+      setImportFileError(error?.message || 'Error al procesar el archivo.');
+    } finally {
+      setImportLoading(false);
+    }
+  };
   const [searchTerm, setSearchTerm] = useState('');
   const [advisors, setAdvisors] = useState<AdvisorData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -240,12 +318,132 @@ export const CustomerPortfolio: React.FC = () => {
             }
           </Typography>
         </Box>
-        {selectedAdvisor && isAdmin && (
-          <Button variant="outlined" color="inherit" onClick={handleBackToList} sx={{ textTransform: 'none', fontWeight: 'bold' }}>
-            ← Volver
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleImportOpen}
+            sx={{ textTransform: 'none', fontWeight: 'bold' }}
+            startIcon={<span style={{ fontSize: '1rem' }}>📥</span>}
+          >
+            Importar Clientes
           </Button>
-        )}
+          {selectedAdvisor && isAdmin && (
+            <Button variant="outlined" color="inherit" onClick={handleBackToList} sx={{ textTransform: 'none', fontWeight: 'bold' }}>
+              ← Volver
+            </Button>
+          )}
+        </Box>
       </Box>
+
+      {/* ====== MODAL IMPORTACIÓN EXCEL ====== */}
+      <Dialog open={importOpen} onClose={handleImportClose} maxWidth="sm" fullWidth
+        slotProps={{ backdrop: { style: { backdropFilter: 'blur(4px)' } } }}>
+        <DialogTitle sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider' }}>
+          📥 Importar Clientes desde Excel
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          {/* Info de columnas */}
+          {!importResult && (
+            <Box sx={{ mb: 2, p: 2, borderRadius: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>📋 Columnas obligatorias del archivo .xlsx:</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {IMPORT_COLUMNS.map(col => (
+                  <Chip key={col} label={col} size="small" variant="outlined" sx={{ fontFamily: 'monospace', fontSize: '0.7rem' }} />
+                ))}
+              </Box>
+            </Box>
+          )}
+
+          {/* Resultado de importación */}
+          {importResult && (
+            <Box sx={{ mb: 2 }}>
+              <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: 1, p: 2, textAlign: 'center', borderRadius: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 'bold' }}>{importResult.total_registros}</Typography>
+                  <Typography variant="caption" color="text.secondary">Total</Typography>
+                </Box>
+                <Box sx={{ flex: 1, p: 2, textAlign: 'center', borderRadius: 2, bgcolor: 'rgba(46,125,50,0.1)', border: '1px solid', borderColor: 'success.main' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'success.main' }}>{importResult.creados}</Typography>
+                  <Typography variant="caption" color="text.secondary">Creados</Typography>
+                </Box>
+                <Box sx={{ flex: 1, p: 2, textAlign: 'center', borderRadius: 2, bgcolor: 'rgba(211,47,47,0.08)', border: '1px solid', borderColor: 'error.main' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'error.main' }}>{importResult.omitidos}</Typography>
+                  <Typography variant="caption" color="text.secondary">Omitidos</Typography>
+                </Box>
+              </Box>
+              {importResult.errores.length > 0 && (
+                <Box sx={{ maxHeight: 180, overflowY: 'auto', p: 1.5, borderRadius: 2, bgcolor: 'rgba(211,47,47,0.05)', border: '1px solid', borderColor: 'error.light' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'error.main', mb: 0.5, display: 'block' }}>Errores encontrados:</Typography>
+                  {importResult.errores.map((err, i) => (
+                    <Typography key={i} variant="caption" sx={{ display: 'block', color: 'text.secondary', fontFamily: 'monospace' }}>
+                      Fila {err.fila}: {err.error}
+                    </Typography>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          )}
+
+          {/* Zona Drag & Drop */}
+          {!importResult && (
+            <Box
+              onDragOver={(e) => { e.preventDefault(); setImportDragging(true); }}
+              onDragLeave={() => setImportDragging(false)}
+              onDrop={handleFileDrop}
+              onClick={() => importInputRef.current?.click()}
+              sx={{
+                border: '2px dashed',
+                borderColor: importDragging ? 'primary.main' : importFile ? 'success.main' : 'divider',
+                borderRadius: 3,
+                p: 4,
+                textAlign: 'center',
+                cursor: 'pointer',
+                bgcolor: importDragging ? 'rgba(242,146,0,0.06)' : importFile ? 'rgba(46,125,50,0.06)' : 'transparent',
+                transition: 'all 0.2s',
+                '&:hover': { borderColor: 'primary.main', bgcolor: 'rgba(242,146,0,0.04)' }
+              }}
+            >
+              <input ref={importInputRef} type="file" accept=".xlsx" hidden onChange={handleFileSelect} />
+              <Typography sx={{ fontSize: '2.5rem', mb: 1 }}>{importFile ? '✅' : '📁'}</Typography>
+              {importFile ? (
+                <>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'success.main' }}>{importFile.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">Haz clic para cambiar el archivo</Typography>
+                </>
+              ) : (
+                <>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Arrastra tu archivo aquí</Typography>
+                  <Typography variant="caption" color="text.secondary">o haz clic para seleccionarlo — Solo .xlsx</Typography>
+                </>
+              )}
+            </Box>
+          )}
+
+          {/* Error de validación */}
+          {importFileError && (
+            <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
+              ⚠ {importFileError}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', gap: 1 }}>
+          <Button onClick={handleImportClose} variant="outlined" color="inherit" disabled={importLoading}>Cancelar</Button>
+          {importResult ? (
+            <Button onClick={handleImportClose} variant="contained" color="primary" sx={{ fontWeight: 'bold' }}>Cerrar</Button>
+          ) : (
+            <Button
+              onClick={handleImportSubmit}
+              variant="contained"
+              color="primary"
+              disabled={!importFile || importLoading}
+              sx={{ fontWeight: 'bold', minWidth: 140 }}
+            >
+              {importLoading ? <CircularProgress size={20} color="inherit" /> : 'Importar'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
 
       {/* SECCIÓN 1: VISTA GENERAL DE TARJETAS (ASESORES) */}
       {!selectedAdvisor && isAdmin && (

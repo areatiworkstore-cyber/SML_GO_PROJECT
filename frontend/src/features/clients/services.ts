@@ -22,6 +22,10 @@ export const clientService = {
   getMapsRedirect(id: number): Promise<{ url: string }> {
     return apiClient.get<{ url: string }>(`/clients/${id}/maps-redirect`);
   },
+
+  getNextClientCode(): Promise<{ next_code: string }> {
+    return apiClient.get<{ next_code: string }>('/clients/next-code');
+  },
 };
 
 export const masterDataService = {

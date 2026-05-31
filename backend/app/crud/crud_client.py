@@ -1,9 +1,23 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.models.client import Client
 from app.schemas.client import ClientCreate, ClientUpdate
 
 def get_client_by_id(db: Session, client_id: int):
     return db.query(Client).filter(Client.id == client_id).first()
+
+def get_next_client_code(db: Session) -> str:
+    """
+    Busca el último client.code registrado (por ID desc) y retorna el siguiente.
+    Si no hay registros, retorna '100000'.
+    """
+    last = db.query(Client.code).order_by(Client.id.desc()).first()
+    if last is None:
+        return '100000'
+    try:
+        return str(int(last[0]) + 1)
+    except (ValueError, TypeError):
+        return '100000'
 
 def get_client_by_code_and_user(db: Session, code: str, user_id: int):
     return db.query(Client).filter(Client.code == code, Client.user_id == user_id).first()

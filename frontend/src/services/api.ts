@@ -21,8 +21,9 @@ async function executeRequest<T>(endpoint: string, options: FetchOptions = {}): 
 
   // Default headers, including authorization token
   const token = localStorage.getItem('token');
+  const isFormData = restOptions.body instanceof FormData;
   const defaultHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
@@ -84,5 +85,9 @@ export const apiClient = {
 
   delete<T>(endpoint: string, options?: Omit<FetchOptions, 'method' | 'body'>): Promise<T> {
     return executeRequest<T>(endpoint, { ...options, method: 'DELETE' });
+  },
+
+  postForm<T>(endpoint: string, formData: FormData, options?: Omit<FetchOptions, 'method' | 'body' | 'headers'>): Promise<T> {
+    return executeRequest<T>(endpoint, { ...options, method: 'POST', body: formData });
   },
 };

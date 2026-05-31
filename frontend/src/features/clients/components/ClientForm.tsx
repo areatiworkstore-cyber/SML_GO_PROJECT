@@ -49,6 +49,29 @@ export const ClientForm: React.FC<ClientFormProps> = ({
     }
   );
 
+  // Estados de carga e interacción independientes
+  const [loadingCode, setLoadingCode] = useState<boolean>(false);
+  const [loadingGeo, setLoadingGeo] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Carga automática de código incremental (Únicamente en modo Creación)
+  useEffect(() => {
+    const fetchNextCode = async () => {
+      if (clientId || initialData?.code) return; // Si es edición no ejecuta nada
+      setLoadingCode(true);
+      try {
+        const res = await clientService.getNextClientCode();
+        setFormData((prev) => ({ ...prev, code: res.next_code }));
+      } catch (err: any) {
+        showError("No se pudo autogenerar el código de cliente consecutivo.");
+      } finally {
+        setLoadingCode(false);
+      }
+    };
+
+    fetchNextCode();
+  }, [clientId, initialData]);
+
   useEffect(() => {
     if (user?.id && !initialData) {
       setFormData((prev) => ({ ...prev, user_id: user.id }));
@@ -61,9 +84,6 @@ export const ClientForm: React.FC<ClientFormProps> = ({
   const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
   const [provinces, setProvinces] = useState<ProvinceResponse[]>([]);
   const [districts, setDistricts] = useState<DistrictResponse[]>([]);
-
-  const [loadingGeo, setLoadingGeo] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchGeoData = async () => {
@@ -169,6 +189,12 @@ export const ClientForm: React.FC<ClientFormProps> = ({
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                 variant="outlined"
+                disabled={loadingCode}
+                slotProps={{
+                  input: {
+                    endAdornment: loadingCode ? <CircularProgress size={20} color="inherit" /> : null,
+                  },
+                }}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
@@ -373,7 +399,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({
               fullWidth
               variant="contained"
               color="primary"
-              disabled={submitting}
+              disabled={submitting || loadingCode}
               sx={{
                 py: 1.5,
                 fontWeight: 'bold',

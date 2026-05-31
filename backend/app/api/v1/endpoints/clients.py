@@ -1,14 +1,23 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.user import User
-from app.schemas.client import ClientCreate, ClientUpdate, ClientResponse
+from app.schemas.client import ClientCreate, ClientUpdate, ClientResponse, ClientNextCodeResponse
 from app.crud import crud_client
+from app.services.import_service import process_excel_import, REQUIRED_COLUMNS
 
 router = APIRouter()
+
+@router.get("/next-code", response_model=ClientNextCodeResponse)
+def read_next_client_code(db: Session = Depends(get_db)):
+    """
+    Retorna el siguiente código secuencial disponible para la creación de un nuevo cliente.
+    """
+    next_code = crud_client.get_next_client_code(db)
+    return {"next_code": next_code}
 
 @router.post("/", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)
 def create_client(
@@ -136,3 +145,34 @@ def delete_client(
         
     crud_client.delete_client(db, client_id=client_id)
     return None
+
+
+@router.post("/import", status_code=status.HTTP_200_OK)
+async def import_clients_from_excel(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Importa clientes de forma masiva desde un archivo .xlsx.
+    El user_id se asigna automáticamente desde el usuario autenticado.
+    Los ADMIN pueden importar; vendedores también (a su propio user_id).
+    """
+    if not file.filename or not file.filename.endswith(".xlsx"):
+        raise HTTPException(
+            status_code=400,
+            detail="Solo se aceptan archivos con extensión .xlsx"
+        )
+
+    file_bytes = await file.read()
+
+    try:
+        result = process_excel_import(
+            file_bytes=file_bytes,
+            user_id=current_user.id,
+            db=db,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return result
