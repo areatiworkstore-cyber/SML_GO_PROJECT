@@ -16,6 +16,7 @@ import Grid from '@mui/material/Grid';
 import { useNotification } from '../../../context/NotificationContext';
 import { MapButton } from '../../../components/MapButton';
 import { ScheduleModal } from '../../schedule_service/components/scheduleModal';
+import { CreateRouteModal } from './CreateRouteModal';
 import type { ClientScheduleResponse } from '../../schedule_service/types';
 import type { Client, BusinessType, ClientGroup } from '../../clients/types';
 import { scheduleService } from '../../schedule_service';
@@ -63,6 +64,7 @@ export const RouteItinerary: React.FC = () => {
 
   // 🚀 Estado de apertura para el Modal de asignación
   const [openModal, setOpenModal] = useState<boolean>(false);
+  const [openRouteModal, setOpenRouteModal] = useState<boolean>(false);
 
   // 🗓️ CONTROL DE DIAS DINÁMICOS (Lunes a Sábado sin "Hoy")
   const weekDatesMapping = React.useMemo(() => getWeekDates(), []);
@@ -225,14 +227,24 @@ export const RouteItinerary: React.FC = () => {
           </Typography>
         </div>
 
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => setOpenModal(true)}
-          sx={{ fontWeight: 'bold', px: 3, py: 1, borderRadius: 2, color: 'secondary.main' }}
-        >
-          + Programar Visita
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => setOpenRouteModal(true)}
+            sx={{ fontWeight: 'bold', px: 3, py: 1, borderRadius: 2 }}
+          >
+            + Crear Ruta
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setOpenModal(true)}
+            sx={{ fontWeight: 'bold', px: 3, py: 1, borderRadius: 2, color: 'secondary.main' }}
+          >
+            + Programar Visita
+          </Button>
+        </Box>
       </Box>
 
       {/* 🗓️ BARRA DE NAVEGACIÓN POR DÍAS (SÓLO LUNES A SÁBADO) */}
@@ -495,6 +507,15 @@ export const RouteItinerary: React.FC = () => {
         open={openModal}
         onClose={() => {
           setOpenModal(false);
+          loadData();
+        }}
+        initialDate={targetDateStr}
+      />
+
+      <CreateRouteModal
+        open={openRouteModal}
+        onClose={() => {
+          setOpenRouteModal(false);
           loadData();
         }}
         initialDate={targetDateStr}

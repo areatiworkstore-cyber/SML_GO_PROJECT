@@ -20,6 +20,11 @@ def create_route(
     """
     Crea una nueva ruta (agenda) con multiples paradas en orden secuencial.
     """
+    # 🔒 Control de accesos OWASP: Vendedores solo crean rutas para sí mismos
+    roles = [ru.role_details.role for ru in current_user.roles]
+    if "ADMIN" not in roles:
+        route_in.user_id = current_user.id
+        
     return crud_route.create_route(db, route_in=route_in)
 
 

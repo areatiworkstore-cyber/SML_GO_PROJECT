@@ -1,4 +1,9 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+let baseEnvUrl = import.meta.env.VITE_API_URL || '';
+// Si no empieza con http:// o https://, significa que es una ruta mal configurada o relativa
+if (!baseEnvUrl.startsWith('http://') && !baseEnvUrl.startsWith('https://')) {
+  baseEnvUrl = 'https://go.sml.com.pe/api/v1';
+}
+const API_BASE_URL = baseEnvUrl;
 
 interface FetchOptions extends RequestInit {
   params?: Record<string, string | number | boolean>;
@@ -10,7 +15,14 @@ async function executeRequest<T>(endpoint: string, options: FetchOptions = {}): 
   const { params, headers, ...restOptions } = options;
 
   // Build URL with query params if any
-  let url = `${API_BASE_URL}${endpoint}`;
+  // Evitamos redirecciones 307 del backend (que el proxy de cPanel deforma a http://127.0.0.1...)
+  // agregando una barra diagonal '/' al final de los endpoints base de colección.
+  let cleanEndpoint = endpoint;
+  if (['/clients', '/routes', '/users', '/client_schedule'].includes(cleanEndpoint)) {
+    cleanEndpoint += '/';
+  }
+
+  let url = `${API_BASE_URL}${cleanEndpoint}`;
   if (params) {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, val]) => {

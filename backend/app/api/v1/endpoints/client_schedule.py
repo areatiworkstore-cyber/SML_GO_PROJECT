@@ -24,6 +24,13 @@ async def read_client_schedule(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Programación de cliente no encontrada",
         )
+    # 🔒 Control de accesos OWASP: Vendedores solo ven sus programaciones
+    roles = [ru.role_details.role for ru in current_user.roles]
+    if "ADMIN" not in roles and client_schedule.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para acceder a esta programación",
+        )
     return client_schedule
 
 @router.get("/", response_model=List[ClientScheduleResponse])
@@ -40,15 +47,14 @@ async def read_client_schedules(
 ):
     """Obtener programaciones de clientes con soporte multi-filtro dinámico."""
     
-    # 🔒 Control de accesos de seguridad:
-    # Si se provee un user_id en la URL y no coincide con el token del usuario logueado,
-    # y además el usuario no cuenta con privilegios administrativos (puedes añadir validación de roles aquí si la requieres),
-    # denegamos la petición inmediatamente.
-    if user_id is not None and current_user.id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permiso para acceder a esta programación",
-        )
+    # 🔒 Control de accesos OWASP:
+    # Si el usuario no es ADMIN, forzamos el filtro de user_id a su propio ID.
+    roles = [ru.role_details.role for ru in current_user.roles]
+    if "ADMIN" not in roles:
+        user_id = current_user.id
+    elif user_id is not None and current_user.id != user_id:
+        # Si es ADMIN pero provee un user_id y queremos validar algo adicional, o permitir acceso total (ADMIN puede ver cualquiera)
+        pass
     
     # Invocamos la consulta enviando toda la carga útil de los filtros
     client_schedules = crud_client_schedule.get_client_schedules(
@@ -71,8 +77,11 @@ async def create_client_schedule(
     current_user: User = Depends(get_current_user),
 ):
     """Crear una nueva programación de cliente"""
-    # Verificar que el usuario de la programación sea el usuario actual
-    if client_schedule.user_id != current_user.id:
+    # 🔒 Control de accesos OWASP: Forzar que el user_id de la agenda sea el del usuario actual si no es ADMIN
+    roles = [ru.role_details.role for ru in current_user.roles]
+    if "ADMIN" not in roles:
+        client_schedule.user_id = current_user.id
+    elif client_schedule.user_id != current_user.id and "ADMIN" not in roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para crear programaciones para otro usuario",

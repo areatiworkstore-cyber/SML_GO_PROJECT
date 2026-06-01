@@ -39,6 +39,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({ open, onClose, ini
     const [allClients, setAllClients] = useState<Client[]>([]);
     const [searchQuery, setSearchQuery] = useState<string>(''); // Texto ingresado (Código o Documento)
     const [selectedClient, setSelectedClient] = useState<Client | null>(null); // Objeto cliente encontrado
+    const [observation, setObservation] = useState<string>(''); // Observación de la visita
 
     const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
     const [selectedTime, setSelectedTime] = useState<Dayjs | null>(dayjs().hour(8).minute(0));
@@ -52,6 +53,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({ open, onClose, ini
             setSelectedDate(dayjs(initialDate));
             setSelectedClient(null);
             setSearchQuery('');
+            setObservation(''); // Resetear la observación al abrir el modal
             setSelectedTime(dayjs(`${initialDate}T08:00:00`));
 
             // Cargar el universo de clientes asignados al abrir el modal
@@ -104,6 +106,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({ open, onClose, ini
             return;
         }
 
+        if (!observation.trim()) {
+            showError('Por favor, ingrese una observación.');
+            return;
+        }
+
         try {
             setSubmitting(true);
 
@@ -115,6 +122,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({ open, onClose, ini
                 user_id: Number(user.id),
                 day: formattedDate,
                 start_time: formattedTime,
+                observation: observation.trim(),
                 active: true
             });
 
@@ -221,6 +229,20 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({ open, onClose, ini
                                         },
                                     }}
                                     disabled={submitting}
+                                />
+
+                                {/* CAMPO DE OBSERVACIÓN */}
+                                <TextField
+                                    fullWidth
+                                    label="Observación de la Visita"
+                                    multiline
+                                    rows={3}
+                                    placeholder="Comentarios, instrucciones, notas sobre qué hacer en la visita..."
+                                    value={observation}
+                                    onChange={(e) => setObservation(e.target.value)}
+                                    disabled={submitting}
+                                    required
+                                    variant="outlined"
                                 />
 
                                 <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
