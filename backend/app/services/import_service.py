@@ -6,8 +6,11 @@ from openpyxl import load_workbook
 from app.models.geographic import Department, Province, District
 from app.models.master_data import DocumentType, BusinessType, ClientGroup
 from app.models.client import Client
+from app.models.supplier import Supplier
 from app.schemas.client import ClientCreate
+from app.schemas.supplier import SupplierCreate 
 from app.crud import crud_client
+from app.crud.crud_supplier import crud_supplier  
 
 REQUIRED_COLUMNS = {
     "Dia_visita",
@@ -38,6 +41,7 @@ def _build_lookup_cache(db: Session) -> Dict[str, Any]:
     doc_types = db.query(DocumentType).all()
     business_types = db.query(BusinessType).all()
     client_groups = db.query(ClientGroup).all()
+    suppliers = db.query(Supplier).all()  # <-- Pre-cargar proveedores existentes en caché
 
     return {
         "departments": {d.name.upper(): d for d in departments},
@@ -46,6 +50,7 @@ def _build_lookup_cache(db: Session) -> Dict[str, Any]:
         "doc_types": {dt.description.upper(): dt for dt in doc_types},
         "business_types": {bt.description.upper(): bt for bt in business_types},
         "client_groups": {cg.description.upper(): cg for cg in client_groups},
+        "suppliers": {s.code.upper(): s for s in suppliers},  # <-- Mapeado por código
     }
 
 
@@ -95,7 +100,7 @@ def process_excel_import(
     db: Session,
 ) -> Dict[str, Any]:
     """
-    Procesa el archivo Excel y crea los clientes en la base de datos.
+    Procesa el archivo Excel y crea los clientes en la base de datos e infiere proveedores.
     Retorna un resumen: {total_registros, creados, omitidos, errores}.
     """
     try:
@@ -151,6 +156,10 @@ def process_excel_import(
             longitud = _to_float(get_cell(row_vals, "LONGITUD")) or _to_float(get_cell(row_vals, "longitud"))
             observacion = (_to_str(get_cell(row_vals, "OBSERVACION")) or _to_str(get_cell(row_vals, "observacion"))).upper()
 
+            # NUEVO: Extraer campos del proveedor
+            codigo_vend = _to_str(get_cell(row_vals, "codigo_vend")).upper()
+            nombre_completo_vendedor = _to_str(get_cell(row_vals, "nombre_completo_vendedor")).upper()
+
             # Resolver IDs desde textos de manera tolerante (sin excepciones si están vacíos o no existen)
             doc_type = cache["doc_types"].get(tipo_documento_txt) if tipo_documento_txt else None
             doc_type_id = doc_type.id if doc_type else None
@@ -167,6 +176,23 @@ def process_excel_import(
                     cache, departamento_txt, provincia_txt, distrito_txt
                 )
 
+            # NUEVO: Lógica de Inferencia de Proveedor (On-The-Fly)
+            supplier_id = None
+            if codigo_vend:
+                supplier_obj = cache["suppliers"].get(codigo_vend)
+                if not supplier_obj:
+                    # Si no existe en caché, se crea automáticamente en base de datos
+                    nuevo_prov = SupplierCreate(
+                        code=codigo_vend[:50],
+                        names=nombre_completo_vendedor[:255] if nombre_completo_vendedor else f"PROVEEDOR {codigo_vend}",
+                        active=True
+                    )
+                    supplier_obj = crud_supplier.create(db, obj_in=nuevo_prov)
+                    # Actualizar el caché en memoria por si se repite en las siguientes filas
+                    cache["suppliers"][codigo_vend] = supplier_obj
+                
+                supplier_id = supplier_obj.id
+
             # Verificar duplicado por document_number (solo si hay número de documento informado)
             existing = None
             if num_documento:
@@ -176,7 +202,7 @@ def process_excel_import(
                 errors.append({"fila": row_num, "error": f"Cliente con documento '{num_documento}' ya existe (omitido)."})
                 continue
 
-            # Crear cliente
+            # Crear cliente con el nuevo supplier_id opcional
             client_data = ClientCreate(
                 code=codigo_cliente[:6] if codigo_cliente else None,
                 name=nombre[:50] if nombre else None,
@@ -187,9 +213,10 @@ def process_excel_import(
                 business_type_id=business_type_id,
                 client_group_id=client_group_id,
                 cellphone=celular[:9] if celular else None,
-                telephone=telefono[:9] if telefono else None,
+                telephone=telefono[:9] if telephone else None,
                 active=True,
-                user_id=user_id,
+                user_id=user_id,          # Mantiene la asociación con el usuario autenticado
+                supplier_id=supplier_id,  # Asocia el proveedor inferido (Permite NULL)
                 latitud=latitud,
                 longitud=longitud,
                 observation=observacion if observacion else "Ninguna observación",
