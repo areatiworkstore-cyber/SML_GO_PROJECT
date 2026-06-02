@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Double, Text, func, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.models.supplier import Supplier  # noqa: F401 – needed for FK resolution
 
 class Client(Base):
     __tablename__ = "client"
@@ -25,6 +26,7 @@ class Client(Base):
     latitud = Column(Double)
     longitud = Column(Double)
     observation = Column(Text)
+    supplier_id = Column(Integer, ForeignKey("supplier.id"), nullable=True)
 
     # Relationships
     document_type = relationship("DocumentType", back_populates="clients")
@@ -34,6 +36,7 @@ class Client(Base):
     user = relationship("User", back_populates="clients")
     waypoints = relationship("Waypoint", back_populates="client")
     client_schedules = relationship("ClientSchedule", back_populates="client")
+    supplier = relationship("Supplier", back_populates="clients")
 
     __table_args__ = (
         UniqueConstraint('code', name='uq_client_code'),

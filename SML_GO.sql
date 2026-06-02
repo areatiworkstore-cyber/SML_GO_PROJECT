@@ -49,9 +49,19 @@ CREATE TABLE `client` (
   `telephone` varchar(9),
   `active` boolean DEFAULT true,
   `user_id` int NOT NULL,
+  `supplier_id` int
   `latitud` double,
   `longitud` double,
   `observation` text NULL
+);
+
+CREATE TABLE `supplier` (
+  `id` int PRIMARY KEY AUTO_INCREMENT,
+  `code` varchar(50) NOT NULL,
+  `names` varchar(255) NOT NULL,
+  `active` boolean NOT NULL DEFAULT true,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 CREATE TABLE `user` (
@@ -145,3 +155,5 @@ ALTER TABLE `waypoint` ADD CONSTRAINT `waypoint_client_fk` FOREIGN KEY (`client_
 ALTER TABLE `client_schedule` ADD CONSTRAINT `client_schedule_client_fk` FOREIGN KEY (`client_id`) REFERENCES `client` (`id`);
 
 ALTER TABLE `client_schedule` ADD CONSTRAINT `client_schedule_user_fk` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`);
+
+ALTER TABLE `client` ADD CONSTRAINT `supplier_client_fk` FOREIGN KEY (`supplier_id`) REFERENCES `supplier` (`id`);
