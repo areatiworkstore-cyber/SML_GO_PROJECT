@@ -4,14 +4,14 @@ from pydantic import BaseModel
 
 # --- SCHEMA DE CLIENTE ---
 class ClientBase(BaseModel):
-    code: str
-    name: str
-    document_type_id: int
-    document_number: str
-    address: str
-    district_id: int
-    business_type_id: int
-    client_group_id: int
+    code: Optional[str] = None
+    name: Optional[str] = None
+    document_type_id: Optional[int] = None
+    document_number: Optional[str] = None
+    address: Optional[str] = None
+    district_id: Optional[int] = None
+    business_type_id: Optional[int] = None
+    client_group_id: Optional[int] = None
     cellphone: Optional[str] = None
     telephone: Optional[str] = None
     active: Optional[bool] = True

@@ -46,7 +46,7 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ open, onClos
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (!user?.id) {
             showError('No se pudo determinar el usuario activo. Inicie sesión nuevamente.');
             return;
@@ -103,7 +103,7 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ open, onClos
                 <DialogContent dividers>
                     <LocalizationProvider dateAdapter={AdapterDayjs}>
                         <Grid container spacing={3.5} sx={{ mt: 0.5 }}>
-                            <Grid item xs={12}>
+                            <Grid size={{ xs: 12 }}>
                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
                                     <TextField
                                         fullWidth
