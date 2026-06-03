@@ -1,4 +1,5 @@
 import io
+import re
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from openpyxl import load_workbook
@@ -10,27 +11,44 @@ from app.models.supplier import Supplier
 from app.schemas.client import ClientCreate
 from app.schemas.supplier import SupplierCreate 
 from app.crud import crud_client
-from app.crud.crud_supplier import crud_supplier  
+from app.crud import crud_supplier  
 
+# Definición técnica unificada de columnas obligatorias en snake_case
 REQUIRED_COLUMNS = {
-    "Dia_visita",
-    "codigo_vend",
-    "nombre_completo_vendedor",
-    "codigo_cliente",
-    "nombre o razon social del cliente",
-    "tipo_documento",
-    "num_documento",
-    "latitud",
-    "longitud",
+    "dia_de_visita",
+    "cod_vendedor",
+    "vendedor",
+    "cod_cliente",
+    "razon_social",
+    "tipo_de_documento",
+    "n_documuento",
     "direccion",
     "distrito",
     "provincia",
     "departamento",
-    "tipo_negocio",
+    "tipo_de_negocio",
     "grupo_cliente",
-    "telefono",
     "celular",
 }
+
+
+def _normalize_header(header: str) -> str:
+    """
+    Normaliza los encabezados del Excel: quita tildes, caracteres especiales,
+    reemplaza espacios por subguiones y lo pasa a minúsculas (snake_case).
+    """
+    if not header:
+        return ""
+    replacements = {'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U', 'Ñ': 'N'}
+    s = header.strip().upper()
+    for k, v in replacements.items():
+        s = s.replace(k, v)
+    
+    s = s.replace("N°", "N").replace("N° ", "N_")
+    s = re.sub(r'[^A-Z0-9\s_]', '', s)
+    
+    s = re.sub(r'\s+', '_', s)
+    return s.lower()
 
 
 def _build_lookup_cache(db: Session) -> Dict[str, Any]:
@@ -41,7 +59,11 @@ def _build_lookup_cache(db: Session) -> Dict[str, Any]:
     doc_types = db.query(DocumentType).all()
     business_types = db.query(BusinessType).all()
     client_groups = db.query(ClientGroup).all()
-    suppliers = db.query(Supplier).all()  # <-- Pre-cargar proveedores existentes en caché
+    suppliers = db.query(Supplier).all()
+    
+    # Pre-cargar solo los códigos de clientes existentes para validar la restricción UNIQUE
+    # Usamos tuplas con (code,) para optimizar el consumo de memoria de la query
+    existing_codes = {c[0].upper() for c in db.query(Client.code).filter(Client.code.isnot(None)).all()}
 
     return {
         "departments": {d.name.upper(): d for d in departments},
@@ -50,7 +72,8 @@ def _build_lookup_cache(db: Session) -> Dict[str, Any]:
         "doc_types": {dt.description.upper(): dt for dt in doc_types},
         "business_types": {bt.description.upper(): bt for bt in business_types},
         "client_groups": {cg.description.upper(): cg for cg in client_groups},
-        "suppliers": {s.code.upper(): s for s in suppliers},  # <-- Mapeado por código
+        "suppliers": {s.code.upper(): s for s in suppliers},
+        "existing_client_codes": existing_codes,  # <-- Guardado en caché como un Set
     }
 
 
@@ -100,8 +123,8 @@ def process_excel_import(
     db: Session,
 ) -> Dict[str, Any]:
     """
-    Procesa el archivo Excel y crea los clientes en la base de datos e infiere proveedores.
-    Retorna un resumen: {total_registros, creados, omitidos, errores}.
+    Procesa el archivo Excel mapeando las columnas físicas sin subguiones
+    e inserta los registros omitiendo duplicados por número de documento o código.
     """
     try:
         wb = load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
@@ -110,14 +133,16 @@ def process_excel_import(
 
     ws = wb.active
 
-    # Leer encabezados de la primera fila
-    headers = [_to_str(cell.value) for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+    # Leer encabezados crudos y pasarlos por el normalizador a snake_case
+    raw_headers = [_to_str(cell.value) for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+    headers = [_normalize_header(h) for h in raw_headers]
     header_index = {h: i for i, h in enumerate(headers)}
 
-    # Validar columnas obligatorias
+    # Validar que cumpla con el set mínimo técnico requerido
     missing = REQUIRED_COLUMNS - set(headers)
     if missing:
-        raise ValueError(f"Campos faltantes: {', '.join(sorted(missing))}")
+        friendly_missing = [m.replace("_", " ").upper() for m in missing]
+        raise ValueError(f"Campos faltantes en el Excel: {', '.join(sorted(friendly_missing))}")
 
     # Pre-cargar cache de lookups
     cache = _build_lookup_cache(db)
@@ -139,28 +164,51 @@ def process_excel_import(
         row_vals = list(row)
 
         try:
-            # Extraer y normalizar valores (soporte para cabeceras antiguas y nuevas)
-            codigo_cliente = (_to_str(get_cell(row_vals, "COD CLIENTE")) or _to_str(get_cell(row_vals, "codigo_cliente"))).upper()
-            nombre = (_to_str(get_cell(row_vals, "RAZON SOCIAL")) or _to_str(get_cell(row_vals, "nombre o razon social del cliente"))).upper()
-            tipo_documento_txt = (_to_str(get_cell(row_vals, "TIPO DE DOCUMENTO")) or _to_str(get_cell(row_vals, "tipo_documento"))).upper()
-            num_documento = _to_str(get_cell(row_vals, "N° DOCUMUENTO")) or _to_str(get_cell(row_vals, "num_documento"))
-            direccion = (_to_str(get_cell(row_vals, "DIRECCION")) or _to_str(get_cell(row_vals, "direccion"))).upper()
-            distrito_txt = (_to_str(get_cell(row_vals, "DISTRITO")) or _to_str(get_cell(row_vals, "distrito"))).upper()
-            provincia_txt = (_to_str(get_cell(row_vals, "PROVINCIA")) or _to_str(get_cell(row_vals, "provincia"))).upper()
-            departamento_txt = (_to_str(get_cell(row_vals, "DEPARTAMENTO")) or _to_str(get_cell(row_vals, "departamento"))).upper()
-            tipo_negocio_txt = (_to_str(get_cell(row_vals, "TIPO DE NEGOCIO")) or _to_str(get_cell(row_vals, "tipo_negocio"))).upper()
-            grupo_cliente_txt = (_to_str(get_cell(row_vals, "GRUPO CLIENTE")) or _to_str(get_cell(row_vals, "grupo_cliente"))).upper()
-            telefono = _to_str(get_cell(row_vals, "TELEFONO")) or _to_str(get_cell(row_vals, "telefono")) or None
-            celular = _to_str(get_cell(row_vals, "CELULAR")) or _to_str(get_cell(row_vals, "celular")) or None
-            latitud = _to_float(get_cell(row_vals, "LATITUD")) or _to_float(get_cell(row_vals, "latitud"))
-            longitud = _to_float(get_cell(row_vals, "LONGITUD")) or _to_float(get_cell(row_vals, "longitud"))
-            observacion = (_to_str(get_cell(row_vals, "OBSERVACION")) or _to_str(get_cell(row_vals, "observacion"))).upper()
+            # Extracción limpia mediante llaves técnicas normalizadas en minúsculas
+            codigo_cliente = get_cell(row_vals, "cod_cliente").upper()
+            nombre = get_cell(row_vals, "razon_social").upper()
+            tipo_documento_txt = get_cell(row_vals, "tipo_de_documento").upper()
+            num_documento = get_cell(row_vals, "n_documuento")
+            direccion = get_cell(row_vals, "direccion").upper()
+            distrito_txt = get_cell(row_vals, "distrito").upper()
+            provincia_txt = get_cell(row_vals, "provincia").upper()
+            departamento_txt = get_cell(row_vals, "departamento").upper()
+            tipo_negocio_txt = get_cell(row_vals, "tipo_de_negocio").upper()
+            grupo_cliente_txt = get_cell(row_vals, "grupo_cliente").upper()
+            
+            telefono = get_cell(row_vals, "telefono") or None
+            celular = get_cell(row_vals, "celular") or None
+            
+            latitud = _to_float(get_cell(row_vals, "latitud"))
+            longitud = _to_float(get_cell(row_vals, "longitud"))
+            observacion = get_cell(row_vals, "observacion").upper()
 
-            # NUEVO: Extraer campos del proveedor
-            codigo_vend = _to_str(get_cell(row_vals, "codigo_vend")).upper()
-            nombre_completo_vendedor = _to_str(get_cell(row_vals, "nombre_completo_vendedor")).upper()
+            # Datos del Proveedor/Vendedor
+            codigo_vend = get_cell(row_vals, "cod_vendedor").upper()
+            nombre_completo_vendedor = get_cell(row_vals, "vendedor").upper()
 
-            # Resolver IDs desde textos de manera tolerante (sin excepciones si están vacíos o no existen)
+            # Validar duplicados por 'codigo_cliente' contra el caché en memoria
+            if codigo_cliente and codigo_cliente in cache["existing_client_codes"]:
+                omitted += 1
+                errors.append({
+                    "fila": row_num, 
+                    "error": f"Cliente con código '{codigo_cliente}' ya existe en el sistema (omitido)."
+                })
+                continue
+
+            # Verificar duplicados por document_number
+            existing_doc = None
+            if num_documento:
+                existing_doc = db.query(Client).filter(Client.document_number == num_documento).first()
+            if existing_doc:
+                omitted += 1
+                errors.append({
+                    "fila": row_num, 
+                    "error": f"Cliente con documento '{num_documento}' ya existe (omitido)."
+                })
+                continue
+
+            # Resolver IDs desde textos cargados en caché
             doc_type = cache["doc_types"].get(tipo_documento_txt) if tipo_documento_txt else None
             doc_type_id = doc_type.id if doc_type else None
 
@@ -176,33 +224,22 @@ def process_excel_import(
                     cache, departamento_txt, provincia_txt, distrito_txt
                 )
 
-            # NUEVO: Lógica de Inferencia de Proveedor (On-The-Fly)
+            # Inferencia y creación On-The-Fly de Proveedores
             supplier_id = None
             if codigo_vend:
                 supplier_obj = cache["suppliers"].get(codigo_vend)
                 if not supplier_obj:
-                    # Si no existe en caché, se crea automáticamente en base de datos
                     nuevo_prov = SupplierCreate(
                         code=codigo_vend[:50],
                         names=nombre_completo_vendedor[:255] if nombre_completo_vendedor else f"PROVEEDOR {codigo_vend}",
                         active=True
                     )
-                    supplier_obj = crud_supplier.create(db, obj_in=nuevo_prov)
-                    # Actualizar el caché en memoria por si se repite en las siguientes filas
+                    supplier_obj = crud_supplier.create_supplier(db, supplier_in=nuevo_prov)
                     cache["suppliers"][codigo_vend] = supplier_obj
                 
                 supplier_id = supplier_obj.id
 
-            # Verificar duplicado por document_number (solo si hay número de documento informado)
-            existing = None
-            if num_documento:
-                existing = db.query(Client).filter(Client.document_number == num_documento).first()
-            if existing:
-                omitted += 1
-                errors.append({"fila": row_num, "error": f"Cliente con documento '{num_documento}' ya existe (omitido)."})
-                continue
-
-            # Crear cliente con el nuevo supplier_id opcional
+            # Construir payload de la entidad
             client_data = ClientCreate(
                 code=codigo_cliente[:6] if codigo_cliente else None,
                 name=nombre[:50] if nombre else None,
@@ -213,16 +250,22 @@ def process_excel_import(
                 business_type_id=business_type_id,
                 client_group_id=client_group_id,
                 cellphone=celular[:9] if celular else None,
-                telephone=telefono[:9] if telephone else None,
+                telephone=telefono[:9] if telefono else None,
                 active=True,
-                user_id=user_id,          # Mantiene la asociación con el usuario autenticado
-                supplier_id=supplier_id,  # Asocia el proveedor inferido (Permite NULL)
+                user_id=user_id,          
+                supplier_id=supplier_id,  
                 latitud=latitud,
                 longitud=longitud,
-                observation=observacion if observacion else "Ninguna observación",
+                observation=observacion if observacion else "SIN OBSERVACIÓN",
             )
 
             crud_client.create_client(db, client_in=client_data)
+            
+            # Si se crea con éxito, agregamos el código al set temporal de caché
+            # por si el mismo código viene repetido más abajo en el mismo archivo Excel
+            if codigo_cliente:
+                cache["existing_client_codes"].add(codigo_cliente)
+                
             created += 1
 
         except Exception as e:

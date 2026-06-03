@@ -7,7 +7,7 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.schemas.client import ClientCreate, ClientUpdate, ClientResponse, ClientNextCodeResponse
 from app.crud import crud_client
-from app.services.import_service import process_excel_import, REQUIRED_COLUMNS
+from app.services.import_service import process_excel_import
 
 router = APIRouter()
 

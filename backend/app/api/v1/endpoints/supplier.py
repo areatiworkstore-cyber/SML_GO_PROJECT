@@ -19,7 +19,7 @@ async def read_suppliers(
     current_user: User = Depends(get_current_user)
 ):
     """Listar proveedores activos/todos"""
-    return crud_supplier.get_multi(db, skip=skip, limit=limit)
+    return crud_supplier.get_suppliers(db, skip=skip, limit=limit)
 
 @router.get("/search", response_model=List[SupplierResponse])
 async def search_suppliers_by_code(
