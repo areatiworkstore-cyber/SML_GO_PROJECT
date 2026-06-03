@@ -1,6 +1,7 @@
 from datetime import date, time
 from typing import Optional
 from pydantic import BaseModel
+from app.schemas.client import ClientSimpleResponse
 
 class ClientScheduleBase(BaseModel):
     day: date
@@ -24,6 +25,7 @@ class ClientScheduleResponse(ClientScheduleBase):
     id: int
     client_id: int
     user_id: int
+    client: ClientSimpleResponse
 
     class Config:
         from_attributes = True

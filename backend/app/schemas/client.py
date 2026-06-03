@@ -50,3 +50,16 @@ class ClientResponse(ClientBase):
 
     class Config:
         from_attributes = True
+
+# --- SCHEMA SIMPLE PARA INYECTAR EN OTROS MODELOS (como ClientSchedule) ---
+class ClientSimpleResponse(BaseModel):
+    id: int
+    code: Optional[str]
+    name: Optional[str]
+    address: Optional[str]
+    cellphone: Optional[str]
+    latitud: Optional[float]
+    longitud: Optional[float]
+    
+    class Config:
+        from_attributes = True
