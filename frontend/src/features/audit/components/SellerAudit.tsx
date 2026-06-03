@@ -19,7 +19,7 @@ import ListItemText from '@mui/material/ListItemText';
 import { useTheme } from '@mui/material/styles';
 import type { Client } from '../../clients/types';
 import type { Route } from '../../routes/types';
-import { clientService } from '../../clients/services';
+import { clientService } from '../../clients/services/services';
 import { routeService } from '../../routes/services';
 import { MapButton } from '../../../components/MapButton';
 

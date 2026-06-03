@@ -20,7 +20,7 @@ import { StaticTimePicker } from '@mui/x-date-pickers/StaticTimePicker';
 import dayjs, { Dayjs } from 'dayjs';
 
 import { scheduleService } from '../services';
-import { clientService } from '../../clients/services';
+import { clientService } from '../../clients/services/services';
 import { useNotification } from '../../../context/NotificationContext';
 import { useAuth } from '../../auth/context/AuthContext';
 import type { Client } from '../../clients/types';

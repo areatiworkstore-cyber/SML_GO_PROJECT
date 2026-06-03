@@ -1,5 +1,5 @@
-import { apiClient } from '../../services/api';
-import type { Client, ClientCreate, BusinessType, ClientGroup } from './types';
+import { apiClient } from '../../../services/api';
+import type { Client, ClientCreate } from '../types';
 
 export const clientService = {
   getClients(userId?: number): Promise<Client[]> {
@@ -26,14 +26,4 @@ export const clientService = {
   getNextClientCode(): Promise<{ next_code: string }> {
     return apiClient.get<{ next_code: string }>('/clients/next-code');
   },
-};
-
-export const masterDataService = {
-  getBusinessTypes(): Promise<BusinessType[]> {
-    return apiClient.get<BusinessType[]>('/master_data/business-types');
-  },
-
-  getClientGroups(): Promise<ClientGroup[]> {
-    return apiClient.get<ClientGroup[]>('/master_data/client-groups');
-  }
 };

@@ -20,7 +20,8 @@ import { CreateRouteModal } from './CreateRouteModal';
 import type { ClientScheduleResponse } from '../../schedule_service/types';
 import type { Client, BusinessType, ClientGroup } from '../../clients/types';
 import { scheduleService } from '../../schedule_service';
-import { clientService, masterDataService } from '../../clients';
+import { clientService } from '../../clients';
+import { masterDataService } from '../../../services/masterDataService';
 import { geographicService } from '../../geographic/services';
 import type { DepartmentResponse, ProvinceResponse, DistrictResponse } from '../../geographic/types';
 
