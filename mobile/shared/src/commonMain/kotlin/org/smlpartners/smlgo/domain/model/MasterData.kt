@@ -17,10 +17,3 @@ data class ClientGroup(
     val id         : Int,
     val description: String
 )
-
-data class Supplier(
-    val id    : Int,
-    val code  : String,
-    val names : String,
-    val active: Boolean
-)

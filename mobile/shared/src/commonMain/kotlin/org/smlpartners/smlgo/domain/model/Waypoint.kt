@@ -9,11 +9,17 @@ data class Waypoint(
     val latitude       : Double?,
     val longitude      : Double?,
     val orderSequence  : Int,
-    val client         : Client,
+    val clientId       : Int,
+    val clientName     : String?,
     val status         : WaypointStatus,
     val visitedAt      : LocalDateTime?,
     val comment        : String?
-)
+) {
+    val isPending   : Boolean get() = status == WaypointStatus.PENDIENTE
+    val isVisited   : Boolean get() = status == WaypointStatus.VISITA
+    val isCancelled : Boolean get() = status == WaypointStatus.CANCELADA
+    val hasLocation : Boolean get() = latitude != null && longitude != null
+}
 
 enum class WaypointStatus {
     PENDIENTE,
