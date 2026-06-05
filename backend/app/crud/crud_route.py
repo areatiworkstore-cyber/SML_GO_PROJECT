@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models.route import Route, Waypoint
-from app.schemas.route import RouteCreate, RouteUpdate, WaypointUpdate
+from app.schemas.route import RouteCreate, RouteUpdate, WaypointUpdate, WaypointCreate
 
 def get_route_by_id(db: Session, route_id: int):
     return db.query(Route).filter(Route.id == route_id).first()
@@ -23,21 +23,6 @@ def create_route(db: Session, route_in: RouteCreate) -> Route:
     db.commit()
     db.refresh(db_route)
 
-    # Create waypoints
-    for wp in route_in.waypoints:
-        db_wp = Waypoint(
-            route_id=db_route.id,
-            address=wp.address,
-            latitud=wp.latitud,
-            longitud=wp.longitud,
-            order_sequence=wp.order_sequence,
-            client_id=wp.client_id,
-            status=wp.status,
-            comment=wp.comment
-        )
-        db.add(db_wp)
-    db.commit()
-    db.refresh(db_route)
     return db_route
 
 def update_route(db: Session, db_route: Route, route_in: RouteUpdate) -> Route:
@@ -64,3 +49,19 @@ def update_waypoint_status(db: Session, db_waypoint: Waypoint, wp_in: WaypointUp
     db.commit()
     db.refresh(db_waypoint)
     return db_waypoint
+
+def create_waypoint(db: Session, route_id: int, wp_in: WaypointCreate) -> Waypoint:
+    db_wp = Waypoint(
+        route_id=route_id,
+        address=wp_in.address,
+        latitud=wp_in.latitud,
+        longitud=wp_in.longitud,
+        order_sequence=wp_in.order_sequence,
+        client_id=wp_in.client_id,
+        status=wp_in.status,
+        comment=wp_in.comment
+    )
+    db.add(db_wp)
+    db.commit()
+    db.refresh(db_wp)
+    return db_wp

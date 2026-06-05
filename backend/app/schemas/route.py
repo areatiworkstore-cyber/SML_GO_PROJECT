@@ -41,7 +41,7 @@ class RouteBase(BaseModel):
     active: Optional[bool] = True
 
 class RouteCreate(RouteBase):
-    waypoints: List[WaypointCreate] = []
+    pass
 
 class RouteUpdate(BaseModel):
     name: Optional[str] = None

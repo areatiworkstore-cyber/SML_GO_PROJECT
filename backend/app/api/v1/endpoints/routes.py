@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.user import User
-from app.schemas.route import RouteCreate, RouteUpdate, RouteResponse, WaypointUpdate, WaypointResponse
+from app.schemas.route import RouteCreate, RouteUpdate, RouteResponse, WaypointUpdate, WaypointResponse, WaypointCreate
 from app.crud import crud_route
 
 router = APIRouter()
@@ -107,3 +107,23 @@ def update_waypoint_status(
         raise HTTPException(status_code=403, detail="Not enough permissions")
         
     return crud_route.update_waypoint_status(db, db_waypoint=waypoint, wp_in=wp_in)
+
+@router.post("/{route_id}/waypoints", response_model=WaypointResponse)
+def create_waypoint_for_route(
+    route_id: int,
+    wp_in: WaypointCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Crea una nueva parada (waypoint) para una ruta existente.
+    """
+    route = crud_route.get_route_by_id(db, route_id=route_id)
+    if not route:
+        raise HTTPException(status_code=404, detail="Ruta no encontrada")
+        
+    roles = [ru.role_details.role for ru in current_user.roles]
+    if "ADMIN" not in roles and route.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+        
+    return crud_route.create_waypoint(db, route_id=route_id, wp_in=wp_in)
