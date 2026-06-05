@@ -19,6 +19,15 @@ plugins {
     alias(libs.plugins.pluginSerialization)
 }
 
+// ── Registro del directorio generado como fuente ──────────────────────────
+kotlin {
+    sourceSets {
+        commonMain {
+            kotlin.srcDir(layout.buildDirectory.dir("generated/kotlin"))
+        }
+    }
+}
+
 kotlin {
     listOf(
         iosArm64(),
@@ -65,6 +74,8 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.serialization)
+            implementation(libs.ktor.client.logging)
+            implementation(libs.ktor.client.auth)
             //Implementacion de la libreria kotlinx-serialization para convertir los datos
             implementation(libs.kotlinx.serialization)
             //Implementacion de la libreria para la inyeccion de dependencias
@@ -74,37 +85,8 @@ kotlin {
             //Implementacion de la libreria para multiplataform-settings
             implementation(libs.multiplatform.settings)
             implementation(libs.multiplatform.settings.noarg)
-
-            // Genera constantes accesibles desde commonMain
-            kotlin.sourceSets.commonMain {
-                kotlin.srcDir(
-                    layout.buildDirectory.dir("generated/kotlin")
-                )
-            }
-
-            tasks.register("generateBuildConfig") {
-                val outputDir = layout.buildDirectory.dir("generated/kotlin/com/smlpartners/smlgo/core")
-                outputs.dir(outputDir)
-                doLast {
-                    val isDebug = gradle.startParameter.taskNames.any { it.contains("debug", ignoreCase = true) }
-                    val url = if (isDebug) apiBaseUrlDebug else apiBaseUrlRelease
-                    outputDir.get().asFile.mkdirs()
-                    File(outputDir.get().asFile, "BuildConfig.kt").writeText("""
-                        package com.smlpartners.smlgo.core
-                        
-                        object BuildConfig {
-                            const val BASE_URL         = "$url"
-                            const val CONNECT_TIMEOUT  = ${connectTimeout}L
-                            const val READ_TIMEOUT     = ${readTimeout}L
-                            const val WRITE_TIMEOUT    = ${writeTimeout}L
-                            const val IS_DEBUG         = $isDebug
-                        }
-                    """.trimIndent())
-                            }
-                        }
-            tasks.matching { it.name.contains("compileKotlin") }.configureEach {
-                dependsOn("generateBuildConfig")
-            }
+            //Implementacion de la libreria androidx security
+            implementation(libs.androidx.security.crypto)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -113,6 +95,42 @@ kotlin {
             implementation(libs.kotlin.test)
         }
     }
+}
+
+// ── Tarea que genera BuildConfig.kt ───────────────────────────────────────
+val generateBuildConfig by tasks.registering {
+    description = "Generacion del archivo BuildConfig"
+    val outputDir = layout.buildDirectory.dir("generated/kotlin/com/smlpartners/smlgo/core")
+    outputs.dir(outputDir)
+
+    doLast {
+        val isDebug = gradle.startParameter.taskNames.any {
+            it.contains("debug", ignoreCase = true)
+        }
+        val url = if (isDebug) apiBaseUrlDebug else apiBaseUrlRelease
+
+        outputDir.get().asFile.mkdirs()
+
+        File(outputDir.get().asFile, "BuildConfig.kt").writeText(
+            """
+            package com.smlpartners.smlgo.core
+
+            object BuildConfig {
+                const val BASE_URL        = "$url"
+                const val CONNECT_TIMEOUT = ${connectTimeout}L
+                const val READ_TIMEOUT    = ${readTimeout}L
+                const val WRITE_TIMEOUT   = ${writeTimeout}L
+                const val IS_DEBUG        = $isDebug
+            }
+            """.trimIndent()
+        )
+        println("[BuildConfig] Generado → BASE_URL=$url | IS_DEBUG=$isDebug")
+    }
+}
+
+// ── Hace que cualquier compilación dependa de la tarea ────────────────────
+tasks.matching { it.name.startsWith("compileKotlin") }.configureEach {
+    dependsOn(generateBuildConfig)
 }
 
 dependencies {
