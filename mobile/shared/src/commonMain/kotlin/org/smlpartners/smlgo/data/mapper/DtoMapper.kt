@@ -16,6 +16,12 @@ fun DocumentTypeDto.toDomain() = DocumentType(id = id, description = description
 fun BusinessTypeDto.toDomain() = BusinessType(id = id, description = description)
 fun ClientGroupDto.toDomain()  = ClientGroup(id = id, description = description)
 fun SupplierDto.toDomain()     = Supplier(id = id, code = code, names = names, active = active)
+
+fun Supplier.toRequestDto() = SupplierRequestDto(
+    code   = code,
+    names  = names,
+    active = active
+)
 fun RoleDto.toDomain()         = Role(id = id, role = role)
 
 // ── Geography ────────────────────────────────────────────────────────────
@@ -61,7 +67,6 @@ fun ClientDto.toDomain() = Client(
     supplier       = supplier?.toDomain()
 )
 
-// Client → Request DTO (para crear/editar)
 fun Client.toRequestDto() = ClientRequestDto(
     code           = code,
     name           = name,
@@ -95,6 +100,16 @@ fun WaypointDto.toDomain() = Waypoint(
     comment       = comment
 )
 
+fun Waypoint.toCreateDto() = WaypointCreateDto(
+    address       = address,
+    latitude      = latitude,
+    longitude     = longitude,
+    orderSequence = orderSequence,
+    clientId      = clientId,
+    status        = status.name,
+    comment       = comment
+)
+
 // ── Route ────────────────────────────────────────────────────────────────
 
 fun RouteDto.toDomain() = Route(
@@ -103,6 +118,12 @@ fun RouteDto.toDomain() = Route(
     scheduledDate = LocalDate.parse(scheduledDate),
     active        = active,
     waypoints     = waypoints.map { it.toDomain() }
+)
+
+fun Route.toUpdateDto() = RouteUpdateDto(
+    name          = name,
+    scheduledDate = scheduledDate.toString(),
+    active        = active
 )
 
 // ── ClientSchedule ───────────────────────────────────────────────────────
@@ -114,6 +135,13 @@ fun ClientScheduleDto.toDomain() = ClientSchedule(
     startTime   = LocalTime.parse(startTime),
     observation = observation,
     active      = active
+)
+
+fun ClientSchedule.toRequestDto() = ClientScheduleRequestDto(
+    clientId    = client.id,
+    day         = day.toString(),
+    startTime   = startTime.toString(),
+    observation = observation
 )
 
 // ── Helpers de fecha ─────────────────────────────────────────────────────

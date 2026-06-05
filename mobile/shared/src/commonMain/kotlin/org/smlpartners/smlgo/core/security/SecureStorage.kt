@@ -20,7 +20,6 @@ class SecureStorage(private val settings: Settings) {
     // ── Token JWT ────────────────────────────────────────────────────
     fun saveToken(token: String)  { settings[KEY_TOKEN] = token }
     fun getToken(): String?       = settings.getStringOrNull(KEY_TOKEN)
-    fun clearToken()              { settings.remove(KEY_TOKEN) }
 
     // ── Datos básicos del usuario en sesión ──────────────────────────
     fun saveUserSession(id: Int, email: String, name: String) {
@@ -38,4 +37,6 @@ class SecureStorage(private val settings: Settings) {
     }
 
     fun isLoggedIn(): Boolean = getToken() != null
+
+    fun getUserId(): Int?     = settings.getIntOrNull(KEY_USER_ID)
 }

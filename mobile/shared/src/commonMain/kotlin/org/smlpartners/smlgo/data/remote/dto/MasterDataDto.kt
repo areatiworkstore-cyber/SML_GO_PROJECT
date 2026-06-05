@@ -20,9 +20,3 @@ data class ClientGroupDto(
     @SerialName("id")           val id          : Int,
     @SerialName("description")  val description : String
 )
-
-@Serializable
-data class RoleDto(
-    @SerialName("id")   val id   : Int,
-    @SerialName("role") val role : String
-)

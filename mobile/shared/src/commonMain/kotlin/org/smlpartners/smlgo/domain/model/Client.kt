@@ -18,4 +18,6 @@ data class Client(
     val longitude      : Double?,
     val observation    : String?,
     val supplier       : Supplier?,
-)
+) {
+    val hasLocation: Boolean get() = latitude != null && longitude != null
+}

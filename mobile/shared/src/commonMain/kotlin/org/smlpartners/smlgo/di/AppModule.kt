@@ -7,6 +7,7 @@ fun initKoin(extraModules: List<org.koin.core.module.Module> = emptyList()) {
         modules(
             securityModule,
             networkModule,
+            repositoryModule,
             *extraModules.toTypedArray()
         )
     }

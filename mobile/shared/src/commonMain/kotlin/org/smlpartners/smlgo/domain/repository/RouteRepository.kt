@@ -9,7 +9,10 @@ interface RouteRepository {
     suspend fun createRoute(
         name          : String,
         scheduledDate : String,
+        userId        : Int,
         waypointIds   : List<Int>
     ): ApiResult<Route>
     suspend fun deleteRoute(id: Int): ApiResult<Unit>
+
+    suspend fun updateRoute(id: Int, route: Route): ApiResult<Route>
 }
