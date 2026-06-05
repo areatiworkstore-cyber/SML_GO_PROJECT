@@ -17,6 +17,7 @@ data class RouteCreateDto(
     @SerialName("name")             val name          : String,
     @SerialName("scheduled_date")   val scheduledDate : String,  // "2024-01-15"
     @SerialName("user_id")          val userId        : Int,
+    @SerialName("waypoint_ids")     val waypointIds   : List<Int> = emptyList(),
     @SerialName("active")           val active        : Boolean  = true
 )
 

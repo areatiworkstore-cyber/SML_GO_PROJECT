@@ -37,3 +37,9 @@ data class WaypointUpdateDto(
     @SerialName("latitud")          val latitude      : Double?  = null,
     @SerialName("longitud")         val longitude     : Double?  = null
 )
+
+@Serializable
+data class WaypointStatusRequestDto(
+    @SerialName("status")           val status          : String,
+    @SerialName("comment")          val comment         : String?
+)

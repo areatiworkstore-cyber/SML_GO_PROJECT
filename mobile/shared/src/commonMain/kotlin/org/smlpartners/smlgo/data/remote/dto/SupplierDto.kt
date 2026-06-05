@@ -10,3 +10,10 @@ data class SupplierDto(
     @SerialName("names")  val names  : String,
     @SerialName("active") val active : Boolean
 )
+
+@Serializable
+data class SupplierRequestDto(
+    @SerialName("code")   val code   : String,
+    @SerialName("names")  val names  : String,
+    @SerialName("active") val active : Boolean
+)

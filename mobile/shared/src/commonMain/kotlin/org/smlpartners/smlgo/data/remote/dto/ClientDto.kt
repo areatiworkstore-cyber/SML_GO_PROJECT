@@ -46,3 +46,8 @@ data class WaypointClientInfoDto(
     @SerialName("id")               val id             : Int,
     @SerialName("name")             val name           : String?,
 )
+
+@Serializable
+data class NextCodeDto(
+    @SerialName("next_code")        val code           : String?,
+)
