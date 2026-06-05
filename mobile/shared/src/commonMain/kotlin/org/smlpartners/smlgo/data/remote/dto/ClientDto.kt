@@ -40,3 +40,9 @@ data class ClientRequestDto(
     @SerialName("observation")          val observation     : String?,
     @SerialName("supplier_id")          val supplierId      : Int?
 )
+
+@Serializable
+data class WaypointClientInfoDto(
+    @SerialName("id")               val id             : Int,
+    @SerialName("name")             val name           : String?,
+)

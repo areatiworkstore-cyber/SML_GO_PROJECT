@@ -13,37 +13,17 @@ data class RouteDto(
 )
 
 @Serializable
-data class RouteRequestDto(
+data class RouteCreateDto(
     @SerialName("name")             val name          : String,
-    @SerialName("scheduled_date")   val scheduledDate : String,
-    @SerialName("waypoints")        val waypoints     : List<WaypointRequestDto> = emptyList()
+    @SerialName("scheduled_date")   val scheduledDate : String,  // "2024-01-15"
+    @SerialName("user_id")          val userId        : Int,
+    @SerialName("active")           val active        : Boolean  = true
 )
 
 @Serializable
-data class WaypointDto(
-    @SerialName("id")               val id              : Int,
-    @SerialName("route_id")         val routeId         : Int,
-    @SerialName("address")          val address         : String,
-    @SerialName("latitud")          val latitude        : Double?,
-    @SerialName("longitud")         val longitude       : Double?,
-    @SerialName("order_sequence")   val orderSequence   : Int,
-    @SerialName("client")           val client          : ClientDto,
-    @SerialName("status")           val status          : String,
-    @SerialName("visited_at")       val visitedAt       : String?,
-    @SerialName("comment")          val comment         : String?
-)
-
-@Serializable
-data class WaypointRequestDto(
-    @SerialName("client_id")        val clientId        : Int,
-    @SerialName("address")          val address         : String,
-    @SerialName("order_sequence")   val orderSequence   : Int,
-    @SerialName("latitud")          val latitude        : Double?,
-    @SerialName("longitud")         val longitude       : Double?
-)
-
-@Serializable
-data class WaypointStatusRequestDto(
-    @SerialName("status")           val status          : String,
-    @SerialName("comment")          val comment         : String?
+data class RouteUpdateDto(
+    @SerialName("name")             val name          : String?  = null,
+    @SerialName("scheduled_date")   val scheduledDate : String?  = null,
+    @SerialName("user_id")          val userId        : Int?     = null,
+    @SerialName("active")           val active        : Boolean? = null
 )
