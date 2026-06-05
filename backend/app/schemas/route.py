@@ -24,10 +24,18 @@ class WaypointUpdate(BaseModel):
     latitud: Optional[float] = None
     longitud: Optional[float] = None
 
+class WaypointClientInfo(BaseModel):
+    id: int
+    name: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
 class WaypointResponse(WaypointBase):
     id: int
     route_id: int
     visited_at: Optional[datetime] = None
+    client: Optional[WaypointClientInfo] = None
 
     class Config:
         from_attributes = True
