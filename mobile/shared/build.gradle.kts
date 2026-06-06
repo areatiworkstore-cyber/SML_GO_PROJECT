@@ -80,6 +80,7 @@ kotlin {
             implementation(libs.kotlinx.serialization)
             //Implementacion de la libreria para la inyeccion de dependencias
             implementation(libs.koin.core)
+            implementation(libs.koin.compose.viewmodel)
             //Implementacion de la libreria para formatear la hora/fecha
             implementation(libs.kotlinx.datetime)
             //Implementacion de la libreria para multiplataform-settings
@@ -87,6 +88,9 @@ kotlin {
             implementation(libs.multiplatform.settings.noarg)
             //Implementacion de la libreria androidx security
             implementation(libs.androidx.security.crypto)
+            //Implementacion de la libreria de Iconos
+            implementation(libs.compose.material.icons)
+            implementation(libs.compose.material.icons.extended)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

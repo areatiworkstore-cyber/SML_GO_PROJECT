@@ -39,4 +39,6 @@ class SecureStorage(private val settings: Settings) {
     fun isLoggedIn(): Boolean = getToken() != null
 
     fun getUserId(): Int?     = settings.getIntOrNull(KEY_USER_ID)
+    fun getUserName(): String? = settings.getStringOrNull(KEY_USER_NAME)
+    fun getUserEmail(): String? = settings.getStringOrNull(KEY_USER_EMAIL)
 }

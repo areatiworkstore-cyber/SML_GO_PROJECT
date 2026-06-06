@@ -1,0 +1,55 @@
+package org.smlpartners.smlgo.ui.dashboard
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import org.smlpartners.smlgo.core.network.ApiResult
+import org.smlpartners.smlgo.domain.model.Client
+import org.smlpartners.smlgo.domain.model.Route
+import org.smlpartners.smlgo.domain.usecase.client.GetClientsWithLocationUseCase
+import org.smlpartners.smlgo.domain.usecase.route.GetRoutesUseCase
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+data class DashboardUiState(
+    val isLoading         : Boolean       = false,
+    val clientsOnMap      : List<Client>  = emptyList(),
+    val todayRoutes       : List<Route>   = emptyList(),
+    val error             : String?       = null
+)
+
+class DashboardViewModel(
+    private val getClientsWithLocationUseCase : GetClientsWithLocationUseCase,
+    private val getRoutesUseCase              : GetRoutesUseCase
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(DashboardUiState())
+    val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+
+    fun loadDashboard() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+
+            val clientsResult = getClientsWithLocationUseCase()
+            val routesResult  = getRoutesUseCase()
+
+            val clients = (clientsResult as? ApiResult.Success)?.data ?: emptyList()
+            val routes  = (routesResult  as? ApiResult.Success)?.data ?: emptyList()
+            val error   = (clientsResult as? ApiResult.Error)?.exception?.message
+                ?: (routesResult  as? ApiResult.Error)?.exception?.message
+
+            _uiState.update {
+                it.copy(
+                    isLoading    = false,
+                    clientsOnMap = clients,
+                    todayRoutes  = routes,
+                    error        = error
+                )
+            }
+        }
+    }
+
+    fun clearError() = _uiState.update { it.copy(error = null) }
+}

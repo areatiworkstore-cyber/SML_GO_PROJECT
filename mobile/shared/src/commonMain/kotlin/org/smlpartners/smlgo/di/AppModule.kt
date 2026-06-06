@@ -8,6 +8,8 @@ fun initKoin(extraModules: List<org.koin.core.module.Module> = emptyList()) {
             securityModule,
             networkModule,
             repositoryModule,
+            useCaseModule,
+            viewModelModule,
             *extraModules.toTypedArray()
         )
     }
