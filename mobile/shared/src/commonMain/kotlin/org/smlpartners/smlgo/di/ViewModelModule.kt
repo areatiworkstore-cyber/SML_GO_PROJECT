@@ -1,6 +1,6 @@
 package org.smlpartners.smlgo.di
 
-import org.koin.compose.viewmodel.dsl.viewModel
+import org.koin.core.module.dsl.viewModel
 import org.smlpartners.smlgo.ui.clients.ClientViewModel
 import org.smlpartners.smlgo.ui.dashboard.DashboardViewModel
 import org.smlpartners.smlgo.ui.auth.LoginViewModel

@@ -21,9 +21,9 @@ suspend fun <T> safeApiCall(block: suspend () -> T): ApiResult<T> {
     return try {
         ApiResult.Success(block())
     } catch (e: io.ktor.client.plugins.ClientRequestException) {
-        ApiResult.Error(ApiError.HttpError(e.response.status.value, e.message ?: "Error del cliente"))
+        ApiResult.Error(ApiError.HttpError(e.response.status.value, e.message))
     } catch (e: io.ktor.client.plugins.ServerResponseException) {
-        ApiResult.Error(ApiError.HttpError(e.response.status.value, e.message ?: "Error del servidor"))
+        ApiResult.Error(ApiError.HttpError(e.response.status.value, e.message))
     } catch (e: io.ktor.client.network.sockets.ConnectTimeoutException) {
         ApiResult.Error(ApiError.NetworkError("Tiempo de conexión agotado"))
     } catch (e: io.ktor.client.network.sockets.SocketTimeoutException) {

@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import org.koin.compose.viewmodel.koinViewModel
@@ -247,7 +248,10 @@ fun <T> SMLGoDropdown(
             readOnly         = true,
             label            = { Text(label) },
             trailingIcon     = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier         = Modifier.menuAnchor().fillMaxWidth()
+            modifier         = Modifier.menuAnchor(
+                ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                enabled = true
+            ).fillMaxWidth()
         )
         ExposedDropdownMenu(
             expanded         = expanded,

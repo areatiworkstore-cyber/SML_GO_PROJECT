@@ -17,17 +17,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.*
+import kotlinx.datetime.LocalDate
 import org.koin.compose.viewmodel.koinViewModel
 import org.smlpartners.smlgo.domain.model.ClientSchedule
 import org.smlpartners.smlgo.ui.shared.components.*
-import kotlinx.datetime.Clock
+import org.smlpartners.smlgo.core.utils.today
 
 @Composable
 fun ScheduleScreen(onBack: () -> Unit) {
     val viewModel: ScheduleViewModel = koinViewModel()
     val uiState  by viewModel.uiState.collectAsState()
 
-    val today        = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val today        = today()
     var selectedDate by remember { mutableStateOf(today) }
 
     LaunchedEffect(Unit) {
@@ -168,7 +169,7 @@ private fun WeekDaySelector(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text      = date.dayOfMonth.toString(),
+                        text      = date.day.toString(),
                         style     = MaterialTheme.typography.bodyMedium,
                         color     = if (isSelected) MaterialTheme.colorScheme.onPrimary
                         else            MaterialTheme.colorScheme.onSurface,
