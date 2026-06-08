@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr
 from app.schemas.master_data import DocumentTypeResponse
-from app.schemas.user import RoleUserResponse
 
 # --- SCHEMA DE USER ---
 class UserBase(BaseModel):
