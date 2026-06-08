@@ -31,8 +31,6 @@ class AuthRepositoryImpl(
             val token    = tokenDto.accessToken ?: ""
             if (token.isBlank()) throw Exception("Token inválido")
 
-            println("[AuthRepo] Token del login: $token")
-
             // Guarda el token
             secureStorage.saveToken(token)
 
@@ -45,7 +43,6 @@ class AuthRepositoryImpl(
                 code = myProfile.code,
                 name = "${myProfile.firstName} ${myProfile.firstSurname}"
             )
-            println("[AuthRepo] Saved: id=${secureStorage.getUserId()}, name=${secureStorage.getUserName()}")
 
             _isLoggedInFlow.value = true
 
