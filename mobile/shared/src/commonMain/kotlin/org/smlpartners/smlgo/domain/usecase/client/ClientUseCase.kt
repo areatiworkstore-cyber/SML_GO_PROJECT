@@ -3,6 +3,7 @@ package org.smlpartners.smlgo.domain.usecase.client
 import org.smlpartners.smlgo.core.network.ApiError
 import org.smlpartners.smlgo.core.network.ApiResult
 import org.smlpartners.smlgo.domain.model.Client
+import org.smlpartners.smlgo.domain.model.NextCode
 import org.smlpartners.smlgo.domain.repository.ClientRepository
 
 class GetClientsUseCase(private val repository: ClientRepository) {
@@ -38,6 +39,11 @@ class UpdateClientUseCase(private val repository: ClientRepository) {
         )
         return repository.updateClient(id, client)
     }
+}
+
+class GetNextClientCodeUseCase(private val repository: ClientRepository) {
+    suspend operator fun invoke(): ApiResult<NextCode> =
+        repository.getNextCode()
 }
 
 private fun validateClient(client: Client): List<String> = buildList {

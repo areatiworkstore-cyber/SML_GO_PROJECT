@@ -1,5 +1,6 @@
 package org.smlpartners.smlgo.ui.shared.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -10,7 +11,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import org.jetbrains.compose.resources.painterResource
+import smlgo.shared.generated.resources.Res
+import smlgo.shared.generated.resources.smlgo
 
 @Composable
 fun SMLGoButton(
@@ -118,6 +124,16 @@ fun SMLGoTopBar(
                         contentDescription = "Volver"
                     )
                 }
+            } else {
+                Image(
+                    painter            = painterResource(Res.drawable.smlgo),
+                    contentDescription = "Logo SML Go",
+                    modifier           = Modifier
+                        .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
+                        .height(36.dp)       // ← altura fija que encaja en el TopBar
+                        .aspectRatio(1.5f),  // ← mantiene proporción del logo
+                    contentScale = ContentScale.Fit
+                )
             }
         },
         actions = actions

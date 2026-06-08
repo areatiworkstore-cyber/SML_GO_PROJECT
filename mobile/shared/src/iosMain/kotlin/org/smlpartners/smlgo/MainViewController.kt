@@ -1,5 +1,10 @@
 package org.smlpartners.smlgo
 
 import androidx.compose.ui.window.ComposeUIViewController
+import platform.UIKit.UIViewController
 
-fun MainViewController() = ComposeUIViewController { App() }
+fun MainViewController(
+    onGetLocation: (onResult: (Double, Double) -> Unit) -> Unit
+): UIViewController = ComposeUIViewController {
+    App(onGetLocation = onGetLocation)
+}

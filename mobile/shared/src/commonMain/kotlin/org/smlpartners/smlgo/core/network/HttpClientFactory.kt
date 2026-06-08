@@ -55,10 +55,7 @@ fun createHttpClient(
                     BearerTokens(accessToken = token, refreshToken = "")
                 }
                 // Si el token expira (401), limpiamos sesión
-                refreshTokens {
-                    onTokenExpired()
-                    null
-                }
+                refreshTokens { null }
                 // Solo adjunta el header en rutas que no sean login
                 sendWithoutRequest { request ->
                     request.url.host == BuildConfig.BASE_URL
@@ -70,7 +67,8 @@ fun createHttpClient(
         }
 
         install(DefaultRequest) {
-            url(BuildConfig.BASE_URL)
+            val base = BuildConfig.BASE_URL
+            url(if (base.endsWith("/")) base else "$base/")
             header("Accept", "application/json")
             header("X-Platform", platformName)
         }

@@ -19,11 +19,17 @@ plugins {
     alias(libs.plugins.pluginSerialization)
 }
 
+compose.resources {
+    publicResClass = true
+}
+
 // ── Registro del directorio generado como fuente ──────────────────────────
 kotlin {
     sourceSets {
         commonMain {
             kotlin.srcDir(layout.buildDirectory.dir("generated/kotlin"))
+            kotlin.srcDir(layout.buildDirectory.dir("generated/compose/resourceGenerator/kotlin/commonResClass"))
+            kotlin.srcDir(layout.buildDirectory.dir("generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors"))
         }
     }
 }
@@ -60,6 +66,9 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.koin.android)
+            implementation(libs.play.services.maps)
+            implementation(libs.maps.compose)
+            implementation(libs.play.services.location)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

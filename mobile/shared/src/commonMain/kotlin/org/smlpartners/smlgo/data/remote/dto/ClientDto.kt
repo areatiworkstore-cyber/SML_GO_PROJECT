@@ -6,21 +6,24 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ClientDto(
     @SerialName("id")               val id             : Int,
-    @SerialName("code")             val code           : String?,
-    @SerialName("name")             val name           : String?,
-    @SerialName("document_type")    val documentType   : DocumentTypeDto?,
-    @SerialName("document_number")  val documentNumber : String?,
-    @SerialName("address")          val address        : String?,
-    @SerialName("district")         val district       : DistrictDto?,
-    @SerialName("business_type")    val businessType   : BusinessTypeDto?,
-    @SerialName("client_group")     val clientGroup    : ClientGroupDto?,
-    @SerialName("cellphone")        val cellphone      : String?,
-    @SerialName("telephone")        val telephone      : String?,
-    @SerialName("active")           val active         : Boolean,
-    @SerialName("latitud")          val latitude       : Double?,
-    @SerialName("longitud")         val longitude      : Double?,
-    @SerialName("observation")      val observation    : String?,
-    @SerialName("supplier")         val supplier       : SupplierDto?
+    @SerialName("code")             val code           : String?  = null,
+    @SerialName("name")             val name           : String?  = null,
+    @SerialName("document_type_id") val documentTypeId : Int?     = null,
+    @SerialName("document_number")  val documentNumber : String?  = null,
+    @SerialName("address")          val address        : String?  = null,
+    @SerialName("district_id")      val districtId     : Int?     = null,
+    @SerialName("business_type_id") val businessTypeId : Int?     = null,
+    @SerialName("client_group_id")  val clientGroupId  : Int?     = null,
+    @SerialName("cellphone")        val cellphone      : String?  = null,
+    @SerialName("telephone")        val telephone      : String?  = null,
+    @SerialName("active")           val active         : Boolean  = true,
+    @SerialName("latitud")          val latitude       : Double?  = null,
+    @SerialName("longitud")         val longitude      : Double?  = null,
+    @SerialName("observation")      val observation    : String?  = null,
+    @SerialName("user_id")          val userId         : Int?     = null,
+    @SerialName("supplier_id")      val supplierId     : Int?     = null,
+    @SerialName("created_at")       val createdAt      : String?  = null,
+    @SerialName("updated_at")       val updatedAt      : String?  = null
 )
 
 @Serializable
@@ -35,6 +38,7 @@ data class ClientRequestDto(
     @SerialName("client_group_id")      val clientGroupId   : Int?,
     @SerialName("cellphone")            val cellphone       : String?,
     @SerialName("telephone")            val telephone       : String?,
+    @SerialName("active")               val active          : Boolean = true,
     @SerialName("latitud")              val latitude        : Double?,
     @SerialName("longitud")             val longitude       : Double?,
     @SerialName("observation")          val observation     : String?,

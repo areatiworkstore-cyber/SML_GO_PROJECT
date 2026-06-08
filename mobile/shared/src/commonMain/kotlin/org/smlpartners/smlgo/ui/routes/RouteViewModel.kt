@@ -2,26 +2,30 @@ package org.smlpartners.smlgo.ui.routes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import org.smlpartners.smlgo.core.network.ApiResult
-import org.smlpartners.smlgo.domain.model.Client
-import org.smlpartners.smlgo.domain.model.Route
-import org.smlpartners.smlgo.domain.model.Waypoint
-import org.smlpartners.smlgo.domain.model.WaypointStatus
-import org.smlpartners.smlgo.domain.usecase.client.GetClientsUseCase
-import org.smlpartners.smlgo.domain.usecase.route.*
-import org.smlpartners.smlgo.domain.usecase.waypoint.CreateWaypointUseCase
-import org.smlpartners.smlgo.domain.usecase.waypoint.UpdateWaypointStatusUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import org.smlpartners.smlgo.core.error.GlobalErrorHandler
+import org.smlpartners.smlgo.core.network.ApiError
+import org.smlpartners.smlgo.core.network.ApiResult
+import org.smlpartners.smlgo.domain.model.Client
+import org.smlpartners.smlgo.domain.model.Route
+import org.smlpartners.smlgo.domain.model.WaypointStatus
+import org.smlpartners.smlgo.domain.usecase.client.GetClientsUseCase
+import org.smlpartners.smlgo.domain.usecase.route.CreateRouteWithWaypointsUseCase
+import org.smlpartners.smlgo.domain.usecase.route.DeleteRouteUseCase
+import org.smlpartners.smlgo.domain.usecase.route.GetRouteByIdUseCase
+import org.smlpartners.smlgo.domain.usecase.route.GetRoutesUseCase
+import org.smlpartners.smlgo.domain.usecase.route.WaypointInput
+import org.smlpartners.smlgo.domain.usecase.waypoint.CreateWaypointUseCase
+import org.smlpartners.smlgo.domain.usecase.waypoint.UpdateWaypointStatusUseCase
 
 data class RouteListUiState(
-    val isLoading : Boolean      = false,
+    val isLoading : Boolean      = true,
     val routes    : List<Route>  = emptyList(),
-    val error     : String?      = null
 )
 
 data class RouteFormUiState(
@@ -36,7 +40,6 @@ data class RouteFormUiState(
 data class RouteDetailUiState(
     val isLoading : Boolean   = false,
     val route     : Route?    = null,
-    val error     : String?   = null
 )
 
 class RouteViewModel(
@@ -62,13 +65,14 @@ class RouteViewModel(
 
     fun loadRoutes() {
         viewModelScope.launch {
-            _listState.update { it.copy(isLoading = true, error = null) }
+            _listState.update { it.copy(isLoading = true) }
             when (val result = getRoutesUseCase()) {
                 is ApiResult.Success -> _listState.update {
                     it.copy(isLoading = false, routes = result.data)
                 }
-                is ApiResult.Error   -> _listState.update {
-                    it.copy(isLoading = false, error = result.exception.message)
+                is ApiResult.Error -> {
+                    GlobalErrorHandler.emit(result.exception)
+                    _listState.update { it.copy(isLoading = false) }
                 }
             }
         }
@@ -78,13 +82,14 @@ class RouteViewModel(
 
     fun loadRouteDetail(routeId: Int) {
         viewModelScope.launch {
-            _detailState.update { it.copy(isLoading = true, error = null) }
+            _detailState.update { it.copy(isLoading = true) }
             when (val result = getRouteByIdUseCase(routeId)) {
                 is ApiResult.Success -> _detailState.update {
                     it.copy(isLoading = false, route = result.data)
                 }
-                is ApiResult.Error   -> _detailState.update {
-                    it.copy(isLoading = false, error = result.exception.message)
+                is ApiResult.Error -> {
+                    GlobalErrorHandler.emit(result.exception)
+                    _detailState.update { it.copy(isLoading = false) }
                 }
             }
         }
@@ -137,8 +142,9 @@ class RouteViewModel(
                 is ApiResult.Success -> _formState.update {
                     it.copy(isLoading = false, isSaved = true, route = result.data)
                 }
-                is ApiResult.Error   -> _formState.update {
-                    it.copy(isLoading = false, error = result.exception.message)
+                is ApiResult.Error -> {
+                    GlobalErrorHandler.emit(result.exception)
+                    _formState.update { it.copy(isLoading = false) }
                 }
             }
         }
@@ -176,8 +182,9 @@ class RouteViewModel(
                         )
                     }
                 }
-                is ApiResult.Error   -> _detailState.update {
-                    it.copy(isLoading = false, error = result.exception.message)
+                is ApiResult.Error -> {
+                    GlobalErrorHandler.emit(result.exception)
+                    _detailState.update { it.copy(isLoading = false) }
                 }
             }
         }
@@ -192,17 +199,20 @@ class RouteViewModel(
                     }
                     onDeleted()
                 }
-                is ApiResult.Error   -> _listState.update {
-                    it.copy(error = "No se pudo eliminar la ruta")
+                is ApiResult.Error -> {
+                    GlobalErrorHandler.emit(
+                        ApiError.UnknownError(
+                            "No se pudo eliminar la ruta"
+                        )
+                    )
                 }
             }
         }
     }
 
-    fun clearError() {
-        _listState.update   { it.copy(error = null) }
-        _formState.update   { it.copy(error = null) }
-        _detailState.update { it.copy(error = null) }
+    fun clearFormError() = _formState.update { it.copy(error = null) }
+    fun resetList() {
+        _listState.update { RouteListUiState() }  // isLoading = true por defecto
     }
 
     fun clearSaved() = _formState.update { it.copy(isSaved = false) }

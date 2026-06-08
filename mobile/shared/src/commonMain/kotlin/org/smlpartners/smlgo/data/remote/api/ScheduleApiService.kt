@@ -16,29 +16,29 @@ import io.ktor.http.contentType
 class ScheduleApiService(private val client: HttpClient) {
 
     suspend fun getClientSchedules(): List<ClientScheduleDto> =
-        client.get("/client_schedules").body()
+        client.get("client_schedules").body()
 
     suspend fun getClientScheduleById(id: Int): ClientScheduleDto =
-        client.get("/client_schedules/$id").body()
+        client.get("client_schedules/$id").body()
 
     suspend fun getClientSchedulesByWeek(start: String, end: String): List<ClientScheduleDto> =
-        client.get("/client_schedules") {
+        client.get("client_schedules") {
             parameter("start", start)
             parameter("end",   end)
         }.body()
 
     suspend fun createClientSchedule(request: ClientScheduleRequestDto): ClientScheduleDto =
-        client.post("/client_schedules") {
+        client.post("client_schedules") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
 
     suspend fun updateClientSchedule(id: Int, request: ClientScheduleRequestDto): ClientScheduleDto =
-        client.put("/client_schedules/$id") {
+        client.put("client_schedules/$id") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
 
     suspend fun deleteClientSchedule(id: Int): Unit =
-        client.delete("/client_schedules/$id").body()
+        client.delete("client_schedules/$id").body()
 }

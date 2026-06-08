@@ -13,14 +13,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import org.smlpartners.smlgo.core.error.GlobalErrorHandler
+import org.smlpartners.smlgo.core.network.ApiError
 
 data class ScheduleUiState(
-    val isLoading         : Boolean                          = false,
+    val isLoading         : Boolean                          = true,
     val schedulesByDay    : Map<LocalDate, List<ClientSchedule>> = emptyMap(),
     val currentWeekStart  : LocalDate?                       = null,
     val availableClients  : List<Client>                     = emptyList(),
     val isSaved           : Boolean                          = false,
-    val error             : String?                          = null
 )
 
 class ScheduleViewModel(
@@ -35,13 +36,14 @@ class ScheduleViewModel(
 
     fun loadWeek(referenceDate: LocalDate) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, currentWeekStart = referenceDate) }
+            _uiState.update { it.copy(isLoading = true, currentWeekStart = referenceDate) }
             when (val result = getWeeklySchedulesUseCase.groupedByDay(referenceDate)) {
                 is ApiResult.Success -> _uiState.update {
                     it.copy(isLoading = false, schedulesByDay = result.data)
                 }
-                is ApiResult.Error   -> _uiState.update {
-                    it.copy(isLoading = false, error = result.exception.message)
+                is ApiResult.Error -> {
+                    GlobalErrorHandler.emit(result.exception)
+                    _uiState.update { it.copy(isLoading = false) }
                 }
             }
         }
@@ -53,8 +55,9 @@ class ScheduleViewModel(
                 is ApiResult.Success -> _uiState.update {
                     it.copy(availableClients = result.data)
                 }
-                is ApiResult.Error   -> _uiState.update {
-                    it.copy(error = result.exception.message)
+                is ApiResult.Error   ->  {
+                    GlobalErrorHandler.emit(result.exception)
+                    _uiState.update { it.copy(isLoading = false) }
                 }
             }
         }
@@ -67,15 +70,16 @@ class ScheduleViewModel(
         observation : String?
     ) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true) }
             when (val result = createScheduleUseCase(clientId, day, startTime, observation)) {
                 is ApiResult.Success -> {
                     // Refresca la semana actual
                     _uiState.value.currentWeekStart?.let { loadWeek(it) }
                     _uiState.update { it.copy(isLoading = false, isSaved = true) }
                 }
-                is ApiResult.Error   -> _uiState.update {
-                    it.copy(isLoading = false, error = result.exception.message)
+                is ApiResult.Error -> {
+                    GlobalErrorHandler.emit(result.exception)
+                    _uiState.update { it.copy(isLoading = false) }
                 }
             }
         }
@@ -83,7 +87,7 @@ class ScheduleViewModel(
 
     fun deleteSchedule(id: Int) {
         viewModelScope.launch {
-            when (val result = deleteScheduleUseCase(id)) {
+            when (deleteScheduleUseCase(id)) {
                 is ApiResult.Success -> {
                     // Elimina localmente sin recargar
                     _uiState.update { state ->
@@ -94,13 +98,19 @@ class ScheduleViewModel(
                         )
                     }
                 }
-                is ApiResult.Error   -> _uiState.update {
-                    it.copy(error = result.exception.message)
+                is ApiResult.Error   -> {
+                    GlobalErrorHandler.emit(
+                        ApiError.UnknownError(
+                            "No se pudo eliminar el horario"
+                        )
+                    )
                 }
             }
         }
     }
 
-    fun clearError()  = _uiState.update { it.copy(error = null) }
     fun clearSaved()  = _uiState.update { it.copy(isSaved = false) }
+    fun resetSchedules() {
+        _uiState.update { ScheduleUiState() }  // isLoading = true por defecto
+    }
 }

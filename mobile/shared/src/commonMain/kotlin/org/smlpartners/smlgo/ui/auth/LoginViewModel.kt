@@ -2,21 +2,26 @@ package org.smlpartners.smlgo.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import org.smlpartners.smlgo.core.network.ApiResult
-import org.smlpartners.smlgo.domain.model.User
-import org.smlpartners.smlgo.domain.usecase.auth.LoginUseCase
-import org.smlpartners.smlgo.domain.usecase.auth.LogoutUseCase
-import org.smlpartners.smlgo.domain.usecase.auth.IsLoggedInUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.smlpartners.smlgo.core.error.AppError
+import org.smlpartners.smlgo.core.error.GlobalErrorHandler
+import org.smlpartners.smlgo.core.error.toAppError
+import org.smlpartners.smlgo.core.network.ApiResult
+import org.smlpartners.smlgo.domain.model.Profile
+import org.smlpartners.smlgo.domain.repository.AuthRepository
+import org.smlpartners.smlgo.domain.usecase.auth.IsLoggedInUseCase
+import org.smlpartners.smlgo.domain.usecase.auth.LoginUseCase
+import org.smlpartners.smlgo.domain.usecase.auth.LogoutUseCase
 
 data class LoginUiState(
     val isLoading       : Boolean = false,
     val isLoggedIn      : Boolean = false,
-    val user            : User?   = null,
+    val user            : Profile?   = null,
     val usernameError   : String? = null,
     val passwordError   : String? = null,
     val error           : String? = null
@@ -25,14 +30,20 @@ data class LoginUiState(
 class LoginViewModel(
     private val loginUseCase    : LoginUseCase,
     private val logoutUseCase   : LogoutUseCase,
-    private val isLoggedInUseCase: IsLoggedInUseCase
+    private val isLoggedInUseCase: IsLoggedInUseCase,
+    private val authRepository  : AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     init {
-        _uiState.update { it.copy(isLoggedIn = isLoggedInUseCase()) }
+        viewModelScope.launch {
+            authRepository.isLoggedInFlow.collectLatest { loggedIn ->
+                println("[LoginViewModel] Flow update isLoggedIn: $loggedIn")
+                _uiState.update { it.copy(isLoggedIn = loggedIn) }
+            }
+        }
     }
 
     fun login(username: String, password: String) {
@@ -54,8 +65,19 @@ class LoginViewModel(
                 is ApiResult.Success -> _uiState.update {
                     it.copy(isLoading = false, isLoggedIn = true, user = result.data)
                 }
-                is ApiResult.Error   -> _uiState.update {
-                    it.copy(isLoading = false, error = result.exception.message)
+                is ApiResult.Error -> {
+                    val appError = result.exception.toAppError()
+                    when (appError) {
+                        // Credenciales incorrectas → error local en pantalla
+                        is AppError.Unauthorized -> _uiState.update {
+                            it.copy(isLoading = false, error = appError.toUserMessage())
+                        }
+                        // Problema técnico → toast global
+                        else -> {
+                            GlobalErrorHandler.emit(appError)
+                            _uiState.update { it.copy(isLoading = false) }
+                        }
+                    }
                 }
             }
         }
@@ -64,7 +86,7 @@ class LoginViewModel(
     fun logout() {
         viewModelScope.launch {
             logoutUseCase()
-            _uiState.update { LoginUiState() }
+            _uiState.value = LoginUiState(isLoggedIn = false)
         }
     }
 

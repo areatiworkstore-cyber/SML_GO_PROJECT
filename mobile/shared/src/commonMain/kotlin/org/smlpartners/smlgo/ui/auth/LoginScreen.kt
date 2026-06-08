@@ -1,5 +1,6 @@
 package org.smlpartners.smlgo.ui.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -11,13 +12,13 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import org.jetbrains.compose.resources.painterResource
+import smlgo.shared.generated.resources.*
 import org.koin.compose.viewmodel.koinViewModel
 import org.smlpartners.smlgo.ui.shared.components.ErrorSnackbar
 import org.smlpartners.smlgo.ui.shared.components.SMLGoButton
@@ -25,17 +26,18 @@ import org.smlpartners.smlgo.ui.shared.components.SMLGoTextField
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
 ) {
     val viewModel : LoginViewModel = koinViewModel()
     val uiState   by viewModel.uiState.collectAsState()
 
     var username        by remember { mutableStateOf("") }
     var password        by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
+    var passwordVisible by remember { mutableStateOf(value = false) }
 
     // Navega cuando el login es exitoso
     LaunchedEffect(uiState.isLoggedIn) {
+        println("[LoginScreen] isLoggedIn: ${uiState.isLoggedIn}")
         if (uiState.isLoggedIn) onLoginSuccess()
     }
 
@@ -51,12 +53,12 @@ fun LoginScreen(
 
             // ── Logo / Título ─────────────────────────────────────────
             Spacer(Modifier.height(48.dp))
-            Text(
-                text       = "SML Go",
-                fontSize   = 36.sp,
-                fontWeight = FontWeight.Bold,
-                color      = MaterialTheme.colorScheme.primary
+            Image(
+                painter = painterResource(Res.drawable.smlgo),
+                contentDescription = "Logo",
+                modifier = Modifier.size(120.dp)
             )
+            Spacer(Modifier.height(16.dp))
             Text(
                 text  = "Gestión de rutas y visitas",
                 style = MaterialTheme.typography.bodyMedium,
@@ -68,10 +70,10 @@ fun LoginScreen(
             SMLGoTextField(
                 value         = username,
                 onValueChange = { username = it },
-                label         = "Usuario",
+                label         = "Correo",
                 error         = uiState.usernameError,
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
+                    keyboardType = KeyboardType.Email,
                     imeAction    = ImeAction.Next
                 )
             )

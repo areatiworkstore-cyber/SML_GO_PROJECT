@@ -138,17 +138,6 @@ fun RouteCreateScreen(
                     )
                 }
             }
-
-            // ── Snackbar ──────────────────────────────────────────────
-            Box(
-                modifier         = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                ErrorSnackbar(
-                    message   = formState.error,
-                    onDismiss = viewModel::clearError
-                )
-            }
         }
     }
 }

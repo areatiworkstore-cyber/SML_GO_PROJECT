@@ -16,23 +16,23 @@ import io.ktor.http.contentType
 class RouteApiService(private val client: HttpClient) {
 
     suspend fun getRoutes(): List<RouteDto> =
-        client.get("/routes").body()
+        client.get("routes").body()
 
     suspend fun getRouteById(id: Int): RouteDto =
-        client.get("/routes/$id").body()
+        client.get("routes/$id").body()
 
     suspend fun createRoute(request: RouteCreateDto): RouteDto =
-        client.post("/routes") {
+        client.post("routes") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
 
     suspend fun updateRoute(id: Int, request: RouteUpdateDto): RouteDto =
-        client.put("/routes/$id") {
+        client.put("routes/$id") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
 
     suspend fun deleteRoute(id: Int): Unit =
-        client.delete("/routes/$id").body()
+        client.delete("routes/$id").body()
 }

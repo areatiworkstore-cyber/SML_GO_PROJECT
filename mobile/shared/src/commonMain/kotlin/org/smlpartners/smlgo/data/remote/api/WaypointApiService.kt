@@ -14,7 +14,7 @@ import io.ktor.http.contentType
 class WaypointApiService(private val client: HttpClient) {
 
     suspend fun createWaypoint(routeId: Int, request: WaypointCreateDto): WaypointDto =
-        client.post("/routes/$routeId/waypoints") {
+        client.post("routes/$routeId/waypoints") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
@@ -23,7 +23,7 @@ class WaypointApiService(private val client: HttpClient) {
         waypointId: Int,
         request: WaypointStatusRequestDto
     ): WaypointDto =
-        client.put("/routes/waypoints/$waypointId") {
+        client.put("routes/waypoints/$waypointId") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()

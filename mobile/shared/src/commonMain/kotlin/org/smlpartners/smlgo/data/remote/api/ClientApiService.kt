@@ -15,28 +15,30 @@ import org.smlpartners.smlgo.data.remote.dto.NextCodeDto
 
 class ClientApiService(private val client: HttpClient) {
 
-    suspend fun getNextCode(): NextCodeDto = client.get("/clients/next-code").body()
+    suspend fun getNextCode(): NextCodeDto =
+        client.get("clients/next-code").body()
 
     suspend fun getClients(): List<ClientDto> =
-        client.get("/clients").body()
+        client.get("clients").body()
+
 
     suspend fun getClientsWithLocation(id: Int): String? =
-        client.get("/clients/$id/maps-direct").body()
+        client.get("clients/$id/maps-direct").body()
 
     suspend fun getClientById(id: Int): ClientDto =
-        client.get("/clients/$id").body()
+        client.get("clients/$id").body()
 
     suspend fun createClient(request: ClientRequestDto): ClientDto =
-        client.post("/clients") {
+        client.post("clients") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
 
     suspend fun updateClient(id: Int, request: ClientRequestDto): ClientDto =
-        client.put("/clients/$id") {
+        client.put("clients/$id") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
 
-    suspend fun deleteClient(id: Int): Unit = client.delete("/clients/$id").body()
+    suspend fun deleteClient(id: Int): Unit = client.delete("clients/$id").body()
 }

@@ -8,11 +8,11 @@ import io.ktor.client.request.get
 class MasterDataApiService(private val client: HttpClient) {
 
     suspend fun getDocumentTypes(): List<DocumentTypeDto> =
-        client.get("/master_data/document-types").body()
+        client.get("master_data/document-types").body()
 
     suspend fun getBusinessTypes(): List<BusinessTypeDto> =
-        client.get("/master_data/business-types").body()
+        client.get("master_data/business-types").body()
 
     suspend fun getClientGroups(): List<ClientGroupDto> =
-        client.get("/master_data/client-groups").body()
+        client.get("master_data/client-groups").body()
 }

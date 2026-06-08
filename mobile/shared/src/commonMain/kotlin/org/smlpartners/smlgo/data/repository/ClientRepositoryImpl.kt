@@ -6,6 +6,7 @@ import org.smlpartners.smlgo.data.mapper.toDomain
 import org.smlpartners.smlgo.data.mapper.toRequestDto
 import org.smlpartners.smlgo.data.remote.api.ClientApiService
 import org.smlpartners.smlgo.domain.model.Client
+import org.smlpartners.smlgo.domain.model.NextCode
 import org.smlpartners.smlgo.domain.repository.ClientRepository
 
 class ClientRepositoryImpl(
@@ -30,4 +31,6 @@ class ClientRepositoryImpl(
                 .map { it.toDomain() }
                 .filter { it.hasLocation }
         }
+    override suspend fun getNextCode(): ApiResult<NextCode> =
+        safeApiCall { api.getNextCode().toDomain() }
 }

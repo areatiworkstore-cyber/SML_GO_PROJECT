@@ -2,6 +2,7 @@ package org.smlpartners.smlgo.domain.repository
 
 import org.smlpartners.smlgo.core.network.ApiResult
 import org.smlpartners.smlgo.domain.model.Client
+import org.smlpartners.smlgo.domain.model.NextCode
 
 interface ClientRepository {
     suspend fun getClients(): ApiResult<List<Client>>
@@ -9,4 +10,5 @@ interface ClientRepository {
     suspend fun createClient(client: Client): ApiResult<Client>
     suspend fun updateClient(id: Int, client: Client): ApiResult<Client>
     suspend fun getClientsWithLocation(): ApiResult<List<Client>>
+    suspend fun getNextCode(): ApiResult<NextCode>
 }

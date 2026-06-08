@@ -19,7 +19,14 @@ dependencies {
     implementation(libs.compose.uiToolingPreview)
 
     implementation(libs.ktor.client.okhttp)
+
     debugImplementation(libs.compose.uiTooling)
+
+    implementation(libs.koin.android)
+
+    implementation(libs.maps.compose)
+
+    implementation(libs.play.services.maps)
 }
 
 android {
@@ -32,6 +39,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+        manifestPlaceholders["MAPS_API_KEY"] = project.findProperty("MAPS_API_KEY")?.toString() ?: ""
     }
     packaging {
         resources {

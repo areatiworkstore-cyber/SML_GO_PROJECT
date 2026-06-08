@@ -12,12 +12,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.smlpartners.smlgo.core.error.GlobalErrorHandler
 
 data class DashboardUiState(
     val isLoading         : Boolean       = false,
     val clientsOnMap      : List<Client>  = emptyList(),
     val todayRoutes       : List<Route>   = emptyList(),
-    val error             : String?       = null
 )
 
 class DashboardViewModel(
@@ -30,26 +30,27 @@ class DashboardViewModel(
 
     fun loadDashboard() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true) }
 
             val clientsResult = getClientsWithLocationUseCase()
             val routesResult  = getRoutesUseCase()
 
             val clients = (clientsResult as? ApiResult.Success)?.data ?: emptyList()
             val routes  = (routesResult  as? ApiResult.Success)?.data ?: emptyList()
-            val error   = (clientsResult as? ApiResult.Error)?.exception?.message
-                ?: (routesResult  as? ApiResult.Error)?.exception?.message
+
+            // Emite errores técnicos al global
+            if (clientsResult is ApiResult.Error)
+                GlobalErrorHandler.emit(clientsResult.exception)
+            if (routesResult is ApiResult.Error)
+                GlobalErrorHandler.emit(routesResult.exception)
 
             _uiState.update {
                 it.copy(
                     isLoading    = false,
                     clientsOnMap = clients,
                     todayRoutes  = routes,
-                    error        = error
                 )
             }
         }
     }
-
-    fun clearError() = _uiState.update { it.copy(error = null) }
 }

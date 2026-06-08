@@ -8,7 +8,7 @@ import org.smlpartners.smlgo.data.remote.dto.*
 
 // ── Auth ─────────────────────────────────────────────────────────────────
 
-fun TokenResponseDto.toDomain(): String = accessToken
+fun TokenResponseDto.toDomain(): String? = accessToken
 
 // ── Master data ──────────────────────────────────────────────────────────
 
@@ -23,6 +23,10 @@ fun Supplier.toRequestDto() = SupplierRequestDto(
     active = active
 )
 fun RoleDto.toDomain()         = Role(id = id, role = role)
+fun RoleUserDto.toDomain() = Role(
+    id   = roleDetails?.id   ?: roleId,
+    role = roleDetails?.role ?: "Rol $roleId"
+)
 
 // ── Geography ────────────────────────────────────────────────────────────
 
@@ -35,6 +39,35 @@ fun DistrictDto.toDomain()   = District(id = id, name = name, active = active, p
 fun UserDto.toDomain() = User(
     id             = id,
     code           = code,
+    firstName      = firstName ?: "User",
+    secondName     = secondName ?: "",
+    firstSurname   = firstSurname ?: "SML",
+    secondSurname  = secondSurname ?: "",
+    documentType   = documentType?.toDomain(),
+    documentNumber = documentNumber,
+    cellphone      = cellphone,
+    email          = email,
+    roles          = roles.map { it.toDomain() },
+    active         = true
+)
+
+fun User.toUpdateDto(password: String? = null) = UserUpdateDto(
+    firstName      = firstName,
+    secondName     = secondName,
+    firstSurname   = firstSurname,
+    secondSurname  = secondSurname,
+    documentTypeId = documentType?.id,
+    documentNumber = documentNumber,
+    cellphone      = cellphone,
+    email          = email,
+    password       = password,
+    active         = true,
+    roleIds        = null
+)
+
+fun MyProfileDto.toDomainUser() = User(
+    id             = id,
+    code           = code,
     firstName      = firstName,
     secondName     = secondName,
     firstSurname   = firstSurname,
@@ -43,30 +76,32 @@ fun UserDto.toDomain() = User(
     documentNumber = documentNumber,
     cellphone      = cellphone,
     email          = email,
-    roles          = roles.mapNotNull { it.roleDetails?.toDomain() }
+    roles          = roles.map { it.toDomain() },
+    active         = true
 )
 
-// ── Client ───────────────────────────────────────────────────────────────
+// ── Client DTO → Domain Model ─────────────────────────────────────────────
 
 fun ClientDto.toDomain() = Client(
     id             = id,
     code           = code,
     name           = name,
-    documentType   = documentType?.toDomain(),
+    documentType   = documentTypeId?.let { DocumentType(id = it, description = "") },
     documentNumber = documentNumber,
     address        = address,
-    district       = district?.toDomain(),
-    businessType   = businessType?.toDomain(),
-    clientGroup    = clientGroup?.toDomain(),
+    district       = districtId?.let { District(id = it, name = "", active = true, provinceId = 0) },
+    businessType   = businessTypeId?.let { BusinessType(id = it, description = "") },
+    clientGroup    = clientGroupId?.let { ClientGroup(id = it, description = "") },
     cellphone      = cellphone,
     telephone      = telephone,
     active         = active,
     latitude       = latitude,
     longitude      = longitude,
     observation    = observation,
-    supplier       = supplier?.toDomain()
+    supplier       = supplierId?.let { Supplier(id = it, code = "", names = "", active = true) }
 )
 
+// ── Domain Model → Request DTO ────────────────────────────────────────────
 fun Client.toRequestDto() = ClientRequestDto(
     code           = code,
     name           = name,
@@ -78,11 +113,15 @@ fun Client.toRequestDto() = ClientRequestDto(
     clientGroupId  = clientGroup?.id,
     cellphone      = cellphone,
     telephone      = telephone,
+    active         = active,
     latitude       = latitude,
     longitude      = longitude,
     observation    = observation,
     supplierId     = supplier?.id
 )
+
+// ── Next-Code Client ────────────────────────────────────────────────────────────────
+fun NextCodeDto.toDomain() = NextCode(nextCode = code)
 
 // ── Waypoint ─────────────────────────────────────────────────────────────
 

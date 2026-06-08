@@ -32,6 +32,7 @@ fun ScheduleScreen(onBack: () -> Unit) {
     var selectedDate by remember { mutableStateOf(today) }
 
     LaunchedEffect(Unit) {
+        viewModel.resetSchedules()
         viewModel.loadWeek(today)
         viewModel.loadClients()
     }
@@ -89,16 +90,6 @@ fun ScheduleScreen(onBack: () -> Unit) {
                     }
                 }
             }
-        }
-
-        Box(
-            modifier         = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            ErrorSnackbar(
-                message   = uiState.error,
-                onDismiss = viewModel::clearError
-            )
         }
     }
 }

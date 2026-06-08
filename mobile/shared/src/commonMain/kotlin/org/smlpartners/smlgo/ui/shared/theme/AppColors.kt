@@ -11,11 +11,11 @@ val Error           = Color(0xFFEF4444)   // Red
 val Background      = Color(0xFFFFF8F0)   // Very light orange background
 val Surface         = Color(0xFFFFFFFF)
 
-// ── Texto ─────────────────────────────────────────────────────────────────
-val TextPrimary     = Color(0xFF0F172A)
-val TextSecondary   = Color(0xFF475569)
-val TextMuted       = Color(0xFF94A3B8)
-val TextInverse     = Color(0xFFFFFFFF)
+// ── Texto — todos oscuros para modo claro ─────────────────────────
+val TextPrimary   = Color(0xFF0F172A)   // Casi negro ← el más importante
+val TextSecondary = Color(0xFF475569)   // Gris oscuro
+val TextMuted     = Color(0xFF94A3B8)   // Gris medio
+val TextInverse   = Color(0xFFFFFFFF)   // Blanco — sobre fondos oscuros
 
 // ── Glass ─────────────────────────────────────────────────────────────────
 val Glass           = Color(0xB3FFFFFF)   // rgba(255,255,255,0.7)

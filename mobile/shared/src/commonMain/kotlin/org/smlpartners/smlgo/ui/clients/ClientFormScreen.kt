@@ -1,20 +1,62 @@
 package org.smlpartners.smlgo.ui.clients
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Tag
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.type
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import org.koin.compose.viewmodel.koinViewModel
-import org.smlpartners.smlgo.domain.model.*
-import org.smlpartners.smlgo.ui.shared.components.*
+import org.smlpartners.smlgo.domain.model.BusinessType
+import org.smlpartners.smlgo.domain.model.Client
+import org.smlpartners.smlgo.domain.model.ClientGroup
+import org.smlpartners.smlgo.domain.model.DocumentType
+import org.smlpartners.smlgo.domain.model.Supplier
+import org.smlpartners.smlgo.ui.shared.components.ErrorSnackbar
+import org.smlpartners.smlgo.ui.shared.components.LoadingOverlay
+import org.smlpartners.smlgo.ui.shared.components.SMLGoButton
+import org.smlpartners.smlgo.ui.shared.components.SMLGoTextField
+import org.smlpartners.smlgo.ui.shared.components.SMLGoTopBar
+import org.smlpartners.smlgo.ui.shared.theme.Radius
+import org.smlpartners.smlgo.ui.shared.theme.Spacing
 
 @Composable
 fun ClientFormScreen(
@@ -40,22 +82,24 @@ fun ClientFormScreen(
     var selectedSupplier     by remember { mutableStateOf<Supplier?>(null) }
 
     // Carga los datos del formulario
-    LaunchedEffect(clientId) { viewModel.loadFormData(clientId) }
+    LaunchedEffect(Unit) {
+        viewModel.resetForm()
+        viewModel.loadFormData(clientId)
+    }
 
     // Pre-rellena si es edición
     LaunchedEffect(formState.client) {
-        formState.client?.let { c ->
-            name           = c.name           ?: ""
-            address        = c.address        ?: ""
-            cellphone      = c.cellphone      ?: ""
-            telephone      = c.telephone      ?: ""
-            documentNumber = c.documentNumber ?: ""
-            observation    = c.observation    ?: ""
-            selectedDocumentType = c.documentType
-            selectedBusinessType = c.businessType
-            selectedClientGroup  = c.clientGroup
-            selectedSupplier     = c.supplier
-        }
+        val c = formState.client
+        name                 = c?.name           ?: ""
+        address              = c?.address        ?: ""
+        cellphone            = c?.cellphone      ?: ""
+        telephone            = c?.telephone      ?: ""
+        documentNumber       = c?.documentNumber ?: ""
+        observation          = c?.observation    ?: ""
+        selectedDocumentType = c?.documentType
+        selectedBusinessType = c?.businessType
+        selectedClientGroup  = c?.clientGroup
+        selectedSupplier     = c?.supplier
     }
 
     // Navega al guardar
@@ -74,6 +118,17 @@ fun ClientFormScreen(
             )
         }
     ) { padding ->
+        if (formState.isLoading) {
+            Box(
+                modifier         = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+            return@Scaffold
+        }
         Box(modifier = Modifier.padding(padding)) {
             Column(
                 modifier = Modifier
@@ -82,6 +137,43 @@ fun ClientFormScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // ── Código solo lectura ───────────────────────────────
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = androidx.compose.foundation.shape.RoundedCornerShape(Radius.md),
+                    color    = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Row(
+                        modifier              = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector        = Icons.Filled.Tag,
+                                contentDescription = null,
+                                modifier           = Modifier.size(18.dp),
+                                tint               = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(Spacing.sm))
+                            Text(
+                                text  = "Código",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        // ← usa nextCode del objeto NextCode
+                        Text(
+                            text       = formState.clientCode?.nextCode ?: "Generando...",
+                            style      = MaterialTheme.typography.titleMedium,
+                            color      = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
                 // ── Datos básicos ─────────────────────────────────────
                 SMLGoTextField(
                     value         = name,
@@ -176,15 +268,28 @@ fun ClientFormScreen(
                 }
                 OutlinedButton(
                     onClick  = {
+                        viewModel.startLocating()
                         onGetLocation { lat, lng ->
                             viewModel.updateLocation(lat, lng)
                         }
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !formState.isLocating
                 ) {
-                    Icon(Icons.Filled.MyLocation, contentDescription = null)
+                    if (formState.isLocating) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Icon(Icons.Filled.MyLocation, contentDescription = null)
+                    }
                     Spacer(Modifier.width(8.dp))
-                    Text("Obtener ubicación actual")
+                    Text(
+                        text = if (formState.isLocating) "Obteniendo ubicación..." else "Obtener ubicación actual",
+                        color = Color.Black
+                    )
                 }
 
                 // ── Guardar ───────────────────────────────────────────
@@ -195,7 +300,7 @@ fun ClientFormScreen(
                         viewModel.saveClient(
                             Client(
                                 id             = clientId ?: 0,
-                                code           = formState.client?.code,
+                                code           = formState.clientCode?.nextCode,
                                 name           = name,
                                 documentType   = selectedDocumentType,
                                 documentNumber = documentNumber.ifBlank { null },

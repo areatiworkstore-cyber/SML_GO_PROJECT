@@ -1,6 +1,5 @@
 package org.smlpartners.smlgo.ui.shared.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
@@ -14,26 +13,32 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 // ── Schemes ───────────────────────────────────────────────────────────────
 
 private val LightColorScheme = lightColorScheme(
-    primary            = Primary,
-    onPrimary          = TextInverse,
-    primaryContainer   = Color(0xFFFFE5B4),
-    onPrimaryContainer = Color(0xFF3D2400),
-    secondary          = Secondary,
-    onSecondary        = TextInverse,
-    secondaryContainer = Color(0xFFFFF0D4),
-    onSecondaryContainer = TextPrimary,
-    tertiary           = Success,
-    onTertiary         = TextInverse,
-    background         = Background,
-    onBackground       = TextPrimary,
-    surface            = Surface,
-    onSurface          = TextPrimary,
-    surfaceVariant     = Color(0xFFFFF0D4),
-    onSurfaceVariant   = TextSecondary,
-    error              = Error,
-    onError            = TextInverse,
-    outline            = Color(0xFFE2E8F0),
-    outlineVariant     = Color(0xFFF1F5F9)
+    primary              = Primary,          // #F29200 naranja
+    onPrimary            = Color(0xFFFFFFFF), // blanco — texto sobre botón naranja
+    primaryContainer     = Color(0xFFFFE5B4),
+    onPrimaryContainer   = Color(0xFF3D2400), // oscuro — texto sobre container naranja claro
+
+    secondary            = Secondary,         // #FFB84D naranja claro
+    onSecondary          = Color(0xFF3D2400), // oscuro — texto sobre secondary
+    secondaryContainer   = Color(0xFFFFF0D4),
+    onSecondaryContainer = TextPrimary,       // #0F172A
+
+    tertiary             = Success,           // #10B981 verde
+    onTertiary           = Color(0xFFFFFFFF), // blanco
+
+    background           = Background,        // #FFF8F0
+    onBackground         = TextPrimary,       // #0F172A oscuro ← clave
+
+    surface              = Surface,           // #FFFFFF
+    onSurface            = TextPrimary,       // #0F172A oscuro ← clave
+    surfaceVariant       = Color(0xFFFFF0D4),
+    onSurfaceVariant     = TextSecondary,     // #475569 gris oscuro ← clave
+
+    error                = Error,             // #EF4444
+    onError              = Color(0xFFFFFFFF), // blanco
+
+    outline              = Color(0xFFCBD5E1), // gris medio
+    outlineVariant       = Color(0xFFE2E8F0)  // gris claro
 )
 
 private val DarkColorScheme = darkColorScheme(
@@ -98,10 +103,8 @@ object SMLGoTheme {
 
 @Composable
 fun SMLGoTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
     content  : @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     CompositionLocalProvider(
         LocalSMLGoColors provides SMLGoColors(
@@ -112,7 +115,7 @@ fun SMLGoTheme(
         )
     ) {
         MaterialTheme(
-            colorScheme = colorScheme,
+            colorScheme = LightColorScheme,
             typography  = SMLGoTypography,
             shapes      = SMLGoShapes,
             content     = content

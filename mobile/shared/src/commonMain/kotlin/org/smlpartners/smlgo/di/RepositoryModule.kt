@@ -20,7 +20,7 @@ val repositoryModule = module {
     single { WaypointApiService(get<HttpClient>()) }
 
     // ── Repositories ─────────────────────────────────────────────────
-    single<AuthRepository>       { AuthRepositoryImpl(get(), get()) }
+    single<AuthRepository>       { AuthRepositoryImpl(get(), get(), get()) }
     single<ClientRepository>     { ClientRepositoryImpl(get()) }
     single<GeographyRepository>  { GeographyRepositoryImpl(get()) }
     single<MasterDataRepository> { MasterDataRepositoryImpl(get()) }

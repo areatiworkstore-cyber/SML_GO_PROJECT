@@ -6,10 +6,10 @@ import com.russhwolf.settings.SharedPreferencesSettings
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-
-lateinit var appContext: Context
+import org.smlpartners.smlgo.appContext
 
 actual fun createSettings(): Settings {
+    // El contexto lo inyecta Koin desde SMLGoApplication
     val masterKey = MasterKey.Builder(appContext)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()

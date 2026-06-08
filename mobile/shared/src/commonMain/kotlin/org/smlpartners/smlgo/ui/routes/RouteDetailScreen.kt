@@ -99,17 +99,6 @@ fun RouteDetailScreen(
                     }
                 }
             }
-
-            // ── Snackbar ──────────────────────────────────────────────
-            Box(
-                modifier         = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                ErrorSnackbar(
-                    message   = detailState.error,
-                    onDismiss = viewModel::clearError
-                )
-            }
         }
     }
 }

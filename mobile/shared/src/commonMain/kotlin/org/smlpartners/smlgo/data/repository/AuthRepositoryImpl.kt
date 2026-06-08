@@ -4,36 +4,78 @@ import org.smlpartners.smlgo.core.network.ApiResult
 import org.smlpartners.smlgo.core.network.safeApiCall
 import org.smlpartners.smlgo.core.security.SecureStorage
 import org.smlpartners.smlgo.data.mapper.toDomain
+import org.smlpartners.smlgo.data.mapper.toUpdateDto
 import org.smlpartners.smlgo.data.remote.api.AuthApiService
+import org.smlpartners.smlgo.domain.model.Profile
 import org.smlpartners.smlgo.domain.model.User
 import org.smlpartners.smlgo.domain.repository.AuthRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import org.smlpartners.smlgo.core.network.HttpClientManager
+import org.smlpartners.smlgo.data.mapper.toDomainUser
+import org.smlpartners.smlgo.domain.model.DocumentType
 
 class AuthRepositoryImpl(
     private val api           : AuthApiService,
-    private val secureStorage : SecureStorage
+    private val secureStorage : SecureStorage,
+    private val httpClientManager: HttpClientManager
 ) : AuthRepository {
 
-    override suspend fun login(username: String, password: String): ApiResult<User> =
-        safeApiCall {
-            // 1. Obtiene el token
+    private val _isLoggedInFlow = MutableStateFlow(secureStorage.isLoggedIn())
+    override val isLoggedInFlow: StateFlow<Boolean> = _isLoggedInFlow.asStateFlow()
+
+    override suspend fun login(username: String, password: String): ApiResult<Profile> {
+        val result = safeApiCall {
             val tokenDto = api.login(username, password)
-            secureStorage.saveToken(tokenDto.accessToken)
+            val token    = tokenDto.accessToken ?: ""
+            if (token.isBlank()) throw Exception("Token inválido")
 
-            // 2. Obtiene los datos del usuario
-            val userDto = api.getMe()
-            val user    = userDto.toDomain()
+            println("[AuthRepo] Token del login: $token")
 
-            // 3. Guarda sesión básica
+            // Guarda el token
+            secureStorage.saveToken(token)
+
+            // Obtiene el perfil con el token explícito — solo esta vez
+            val myProfile = api.getMe(token)
+            println("[AuthRepo] getMe response: id=${myProfile.id}, name=${myProfile.firstName}")
+
             secureStorage.saveUserSession(
-                id    = user.id,
-                email = user.email,
-                name  = "${user.firstName} ${user.firstSurname}"
+                id   = myProfile.id,
+                code = myProfile.code,
+                name = "${myProfile.firstName} ${myProfile.firstSurname}"
             )
-            user
+            println("[AuthRepo] Saved: id=${secureStorage.getUserId()}, name=${secureStorage.getUserName()}")
+
+            _isLoggedInFlow.value = true
+
+            Profile(
+                id             = myProfile.id,
+                code           = myProfile.code,
+                firstName      = myProfile.firstName,
+                secondName     = myProfile.secondName,
+                firstSurname   = myProfile.firstSurname,
+                secondSurname  = myProfile.secondSurname,
+                documentType   = myProfile.documentType?.toDomain(),
+                documentNumber = myProfile.documentNumber,
+                cellphone      = myProfile.cellphone,
+                email          = myProfile.email,
+                roles          = myProfile.roles.map { it.toDomain() }
+            )
         }
+
+        // ← FUERA del safeApiCall — el cliente viejo ya terminó su trabajo
+        if (result is ApiResult.Success) {
+            httpClientManager.recreate()
+        }
+
+        return result
+    }
 
     override suspend fun logout() {
         secureStorage.clearSession()
+        _isLoggedInFlow.value = false
+        httpClientManager.recreate()
     }
 
     override suspend fun register(
@@ -42,6 +84,15 @@ class AuthRepositoryImpl(
     ): ApiResult<User> = safeApiCall {
         api.register(username, password).toDomain()
     }
+
+    override suspend fun updateUser(id: Int, user: User): ApiResult<User> = safeApiCall {
+        api.updateUser(id, user.toUpdateDto()).toDomain()
+    }
+
+    override suspend fun getFullUser(): ApiResult<User> =
+        safeApiCall {
+            api.getMe().toDomainUser()   // ← users/me con campos completos
+        }
 
     override fun isLoggedIn(): Boolean = secureStorage.isLoggedIn()
 

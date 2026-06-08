@@ -1,5 +1,7 @@
 package org.smlpartners.smlgo.core.network
 
+import org.smlpartners.smlgo.core.error.GlobalErrorHandler
+
 /**
  * Wrapper genérico para todas las respuestas de la API.
  * Evita lanzar excepciones en los repositorios.
@@ -29,8 +31,28 @@ suspend fun <T> safeApiCall(block: suspend () -> T): ApiResult<T> {
     } catch (e: io.ktor.client.network.sockets.SocketTimeoutException) {
         ApiResult.Error(ApiError.NetworkError("Tiempo de lectura agotado"))
     } catch (e: kotlinx.serialization.SerializationException) {
+        println("[safeApiCall] SerializationError: ${e.message}")
         ApiResult.Error(ApiError.SerializationError("Error al procesar la respuesta"))
     } catch (e: Exception) {
+        println("[safeApiCall] UnknownError: ${e.message}")
+        e.printStackTrace()
         ApiResult.Error(ApiError.UnknownError(e.message ?: "Error desconocido"))
+    }
+}
+
+/**
+ * Maneja el resultado y emite al GlobalErrorHandler si es error.
+ * Devuelve el dato si es Success, null si es Error.
+ */
+fun <T> ApiResult<T>.handleOrNull(
+    onSuccess: ((T) -> Unit)? = null
+): T? = when (this) {
+    is ApiResult.Success -> {
+        onSuccess?.invoke(data)
+        data
+    }
+    is ApiResult.Error -> {
+        GlobalErrorHandler.emit(exception)
+        null
     }
 }

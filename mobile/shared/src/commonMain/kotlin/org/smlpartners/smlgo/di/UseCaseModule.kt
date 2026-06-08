@@ -18,6 +18,9 @@ val useCaseModule = module {
     factory { LogoutUseCase(get()) }
     factory { IsLoggedInUseCase(get()) }
 
+    // ── Next Code Client ──────────────────────────────────────────────
+    factory { GetNextClientCodeUseCase(get()) }
+
     // ── Client ────────────────────────────────────────────────────────
     factory { GetClientsUseCase(get()) }
     factory { GetClientByIdUseCase(get()) }
@@ -53,4 +56,5 @@ val useCaseModule = module {
     factory { GetProvincesUseCase(get()) }
     factory { GetDistrictsUseCase(get()) }
     factory { GetClientFormMasterDataUseCase(get(), get()) }
+    factory { GetProfileMasterDataUseCase(get(), get()) }
 }
