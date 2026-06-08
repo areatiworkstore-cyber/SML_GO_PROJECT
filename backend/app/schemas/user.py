@@ -26,7 +26,7 @@ class UserPerfilResponse(BaseModel):
     document_number : str
     cellphone       : str
     email           : str
-    roles           : List[RoleUserResponse] = []
+    roles           : List[int] = []
 
     class Config:
         from_attributes = True
