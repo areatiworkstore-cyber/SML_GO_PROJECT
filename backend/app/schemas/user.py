@@ -3,6 +3,20 @@ from typing import Optional, List
 from pydantic import BaseModel, EmailStr
 from app.schemas.master_data import DocumentTypeResponse
 
+# --- SCHEMA DE ROL USUARIO ---
+class RoleUserBase(BaseModel):
+    user_id: int
+    role_id: int
+
+class RoleUserUpdate(RoleUserBase):
+    pass
+
+class RoleUserResponse(RoleUserBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
 # --- SCHEMA DE USER ---
 class UserBase(BaseModel):
     code: str
@@ -26,7 +40,7 @@ class UserPerfilResponse(BaseModel):
     document_number : str
     cellphone       : str
     email           : str
-    roles           : List[int] = []
+    roles           : List[RoleUserResponse] = []
 
     class Config:
         from_attributes = True
@@ -52,20 +66,6 @@ class UserResponse(UserBase):
     id: int
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-# --- SCHEMA DE ROL USUARIO ---
-class RoleUserBase(BaseModel):
-    user_id: int
-    role_id: int
-
-class RoleUserUpdate(RoleUserBase):
-    pass
-
-class RoleUserResponse(RoleUserBase):
-    id: int
 
     class Config:
         from_attributes = True
