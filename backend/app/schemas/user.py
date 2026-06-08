@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr
-from app.schemas.master_data import DocumentTypeResponse
+from app.schemas.master_data import DocumentTypeResponse, RoleResponse
 
 # --- SCHEMA DE ROL USUARIO ---
 class RoleUserBase(BaseModel):
@@ -13,6 +13,7 @@ class RoleUserUpdate(RoleUserBase):
 
 class RoleUserResponse(RoleUserBase):
     id: int
+    role_details: Optional[RoleResponse] = None
 
     class Config:
         from_attributes = True
@@ -66,6 +67,8 @@ class UserResponse(UserBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    roles: List[RoleUserResponse] = []
 
     class Config:
         from_attributes = True
+

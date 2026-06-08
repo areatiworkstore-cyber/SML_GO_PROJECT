@@ -31,7 +31,6 @@ export const EmployeeList: React.FC = () => {
     const { showSuccess, showError, showConfirm } = useNotification();
     const [searchTerm, setSearchTerm] = useState('');
     const [employees, setEmployees] = useState<Employee[]>([]);
-    const [roleAssignments, setRoleAssignments] = useState<any[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
     const [modalState, setModalState] = useState<{
@@ -51,13 +50,8 @@ export const EmployeeList: React.FC = () => {
     const loadEmployees = async () => {
         try {
             setLoading(true);
-            const [usersData, rolesData] = await Promise.all([
-                employeeService.getEmployees(0, 100),
-                employeeService.getRoleUsers(0, 100)
-            ]);
-
+            const usersData = await employeeService.getEmployees(0, 100);
             setEmployees(usersData || []);
-            setRoleAssignments(rolesData || []);
         } catch (error) {
             showError(error);
         } finally {
@@ -68,7 +62,7 @@ export const EmployeeList: React.FC = () => {
     const handleOpenModal = (mode: 'create' | 'edit' | 'view', employee: Employee | null = null) => {
         let employeeData = employee;
         if (employee) {
-            const userRoleAssignment = roleAssignments.find(ra => ra.user_id === employee.id);
+            const userRoleAssignment = employee.roles?.[0];
             const roleId = userRoleAssignment?.role_id;
             employeeData = { ...employee, role: roleId || '' } as any;
         }
@@ -191,16 +185,15 @@ export const EmployeeList: React.FC = () => {
                             </TableHead>
                             <TableBody>
                                 {filteredEmployees.map((emp) => {
-                                    // 1. Buscamos la asignación correspondiente en la respuesta de /role_users
-                                    const userRoleAssignment = roleAssignments.find(ra => ra.user_id === emp.id);
+                                    // 1. Obtenemos la asignación de rol embebida en el empleado
+                                    const userRoleAssignment = emp.roles?.[0];
 
-                                    // 2. Extraemos el role_id numérico de la asignación
+                                    // 2. Extraemos el role_id
                                     const roleId = userRoleAssignment?.role_id;
 
-                                    // 3. Resolvemos usando el mapeo de IDs confiables, o fallback por texto si fuera necesario
+                                    // 3. Resolvemos usando el mapeo de IDs o los detalles de rol embebidos
                                     const systemRole = (roleId && ROLE_MAP[roleId]) ||
                                         userRoleAssignment?.role_details?.role ||
-                                        userRoleAssignment?.role?.role ||
                                         (emp.code?.startsWith('ADM') ? 'ADMIN' : 'VENDEDOR');
 
                                     return (

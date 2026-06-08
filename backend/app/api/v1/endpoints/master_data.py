@@ -64,7 +64,7 @@ def get_client_groups(
 @router.get("/roles", response_model=List[RoleResponse], status_code=status.HTTP_200_OK)
 def read_roles(
     db: Session = Depends(get_db),
-    current_user: User = Depends(check_roles(["ADMIN"]))  # ← SOLO ADMINS pueden ver esto
+    current_user: User = Depends(get_current_user)
 ):
     """
     Endpoint para listar todos los roles disponibles.
@@ -75,7 +75,7 @@ def read_roles(
 def read_role(
     role_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(check_roles(["ADMIN"]))  # ← SOLO ADMINS pueden ver esto
+    current_user: User = Depends(get_current_user)
 ):
     """
     Endpoint para obtener un rol por ID.

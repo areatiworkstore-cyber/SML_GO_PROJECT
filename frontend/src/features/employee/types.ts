@@ -10,6 +10,7 @@ export interface Employee {
     email: string;
     phone?: string;
     status: 'ACTIVO' | 'INACTIVO';
+    roles?: any[];
 }
 
 export interface SellerPortfolio {

@@ -26,7 +26,5 @@ export const employeeService = {
         });
     },
 
-    getRoleUsers(skip: number = 0, limit: number = 100): Promise<any[]> {
-        return apiClient.get<any[]>('/users/role_users', { params: { skip, limit } });
-    }
+
 };
