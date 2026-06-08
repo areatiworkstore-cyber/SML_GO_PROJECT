@@ -19,7 +19,16 @@ actual fun PlatformMapView(
     onMarkerSelected : (MapMarker) -> Unit,
     modifier         : Modifier
 ) {
-    val mapView = remember { MKMapView() }
+    val locationManager = remember { platform.CoreLocation.CLLocationManager() }
+    val mapView = remember { 
+        MKMapView().apply {
+            showsUserLocation = true
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        locationManager.requestWhenInUseAuthorization()
+    }
 
     LaunchedEffect(markers) {
         // Limpia annotations anteriores
