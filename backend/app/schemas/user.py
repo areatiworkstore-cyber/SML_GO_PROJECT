@@ -21,6 +21,11 @@ class UserPerfilResponse(BaseModel):
     second_name: str
     first_surname: str
     second_surname: str
+    document_type   : DocumentTypeResponse | None = None
+    document_number : str
+    cellphone       : str
+    email           : str
+    roles           : List[RoleUserResponse] = []
 
     class Config:
         from_attributes = True
