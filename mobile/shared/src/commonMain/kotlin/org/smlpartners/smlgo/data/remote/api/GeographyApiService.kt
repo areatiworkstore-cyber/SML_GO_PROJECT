@@ -3,12 +3,14 @@ package org.smlpartners.smlgo.data.remote.api
 import org.smlpartners.smlgo.data.remote.dto.DepartmentDto
 import org.smlpartners.smlgo.data.remote.dto.ProvinceDto
 import org.smlpartners.smlgo.data.remote.dto.DistrictDto
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 
-class GeographyApiService(private val client: HttpClient) {
+import org.smlpartners.smlgo.core.network.HttpClientManager
+
+class GeographyApiService(private val manager: HttpClientManager) {
+    private val client get() = manager.client
 
     suspend fun getDepartments(): List<DepartmentDto> =
         client.get("geography/departments").body()

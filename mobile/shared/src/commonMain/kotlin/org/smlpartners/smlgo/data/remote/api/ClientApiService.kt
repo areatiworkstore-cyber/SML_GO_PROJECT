@@ -2,7 +2,6 @@ package org.smlpartners.smlgo.data.remote.api
 
 import org.smlpartners.smlgo.data.remote.dto.ClientDto
 import org.smlpartners.smlgo.data.remote.dto.ClientRequestDto
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -13,7 +12,10 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import org.smlpartners.smlgo.data.remote.dto.NextCodeDto
 
-class ClientApiService(private val client: HttpClient) {
+import org.smlpartners.smlgo.core.network.HttpClientManager
+
+class ClientApiService(private val manager: HttpClientManager) {
+    private val client get() = manager.client
 
     suspend fun getNextCode(): NextCodeDto =
         client.get("clients/next-code").body()

@@ -3,7 +3,6 @@ package org.smlpartners.smlgo.data.remote.api
 import org.smlpartners.smlgo.data.remote.dto.WaypointDto
 import org.smlpartners.smlgo.data.remote.dto.WaypointCreateDto
 import org.smlpartners.smlgo.data.remote.dto.WaypointStatusRequestDto
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -11,7 +10,10 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 
-class WaypointApiService(private val client: HttpClient) {
+import org.smlpartners.smlgo.core.network.HttpClientManager
+
+class WaypointApiService(private val manager: HttpClientManager) {
+    private val client get() = manager.client
 
     suspend fun createWaypoint(routeId: Int, request: WaypointCreateDto): WaypointDto =
         client.post("routes/$routeId/waypoints") {

@@ -1,6 +1,5 @@
 package org.smlpartners.smlgo.data.remote.api
 
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
@@ -13,8 +12,10 @@ import io.ktor.http.ContentType
 import io.ktor.http.Parameters
 import io.ktor.http.contentType
 import org.smlpartners.smlgo.data.remote.dto.*
+import org.smlpartners.smlgo.core.network.HttpClientManager
 
-class AuthApiService(private val client: HttpClient) {
+class AuthApiService(private val manager: HttpClientManager) {
+    private val client get() = manager.client
 
     suspend fun login(username: String, password: String): TokenResponseDto {
         val response = client.submitForm(

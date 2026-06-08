@@ -3,21 +3,20 @@ package org.smlpartners.smlgo.di
 import org.smlpartners.smlgo.data.remote.api.*
 import org.smlpartners.smlgo.data.repository.*
 import org.smlpartners.smlgo.domain.repository.*
-import io.ktor.client.HttpClient
 import org.koin.dsl.module
 
 val repositoryModule = module {
 
-    // ── API Services ─────────────────────────────────────────────────
-    single { AuthApiService(get<HttpClient>()) }
-    single { ClientApiService(get<HttpClient>()) }
-    single { GeographyApiService(get<HttpClient>()) }
-    single { MasterDataApiService(get<HttpClient>()) }
-    single { RoleApiService(get<HttpClient>()) }
-    single { RouteApiService(get<HttpClient>()) }
-    single { ScheduleApiService(get<HttpClient>()) }
-    single { SupplierApiService(get<HttpClient>()) }
-    single { WaypointApiService(get<HttpClient>()) }
+    // ── API Services (reciben HttpClientManager para usar siempre el cliente activo) ──
+    single { AuthApiService(get()) }
+    single { ClientApiService(get()) }
+    single { GeographyApiService(get()) }
+    single { MasterDataApiService(get()) }
+    single { RoleApiService(get()) }
+    single { RouteApiService(get()) }
+    single { ScheduleApiService(get()) }
+    single { SupplierApiService(get()) }
+    single { WaypointApiService(get()) }
 
     // ── Repositories ─────────────────────────────────────────────────
     single<AuthRepository>       { AuthRepositoryImpl(get(), get(), get()) }
@@ -29,4 +28,4 @@ val repositoryModule = module {
     single<ScheduleRepository>   { ScheduleRepositoryImpl(get()) }
     single<SupplierRepository>   { SupplierRepositoryImpl(get()) }
     single<WaypointRepository>   { WaypointRepositoryImpl(get()) }
-}
+}

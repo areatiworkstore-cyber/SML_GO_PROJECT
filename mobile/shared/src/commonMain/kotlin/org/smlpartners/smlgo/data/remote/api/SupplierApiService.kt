@@ -2,7 +2,6 @@ package org.smlpartners.smlgo.data.remote.api
 
 import org.smlpartners.smlgo.data.remote.dto.SupplierDto
 import org.smlpartners.smlgo.data.remote.dto.SupplierRequestDto
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
@@ -12,7 +11,10 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 
-class SupplierApiService(private val client: HttpClient) {
+import org.smlpartners.smlgo.core.network.HttpClientManager
+
+class SupplierApiService(private val manager: HttpClientManager) {
+    private val client get() = manager.client
 
     suspend fun getSuppliers(): List<SupplierDto> =
         client.get("suppliers").body()

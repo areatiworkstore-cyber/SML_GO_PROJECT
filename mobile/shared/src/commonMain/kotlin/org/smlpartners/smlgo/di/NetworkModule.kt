@@ -1,6 +1,5 @@
 package org.smlpartners.smlgo.di
 
-import org.smlpartners.smlgo.core.network.createHttpClient
 import org.smlpartners.smlgo.core.security.SecureStorage
 import org.koin.dsl.module
 import org.smlpartners.smlgo.core.network.HttpClientManager
@@ -12,5 +11,4 @@ val networkModule = module {
             onTokenExpired = { get<SecureStorage>().clearSession() }
         )
     }
-    single { get<HttpClientManager>().client }
 }

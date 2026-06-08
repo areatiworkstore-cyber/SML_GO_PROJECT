@@ -2,7 +2,6 @@ package org.smlpartners.smlgo.data.remote.api
 
 import org.smlpartners.smlgo.data.remote.dto.ClientScheduleDto
 import org.smlpartners.smlgo.data.remote.dto.ClientScheduleRequestDto
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -13,7 +12,10 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 
-class ScheduleApiService(private val client: HttpClient) {
+import org.smlpartners.smlgo.core.network.HttpClientManager
+
+class ScheduleApiService(private val manager: HttpClientManager) {
+    private val client get() = manager.client
 
     suspend fun getClientSchedules(): List<ClientScheduleDto> =
         client.get("client_schedules").body()
