@@ -20,8 +20,7 @@ class ClientBase(BaseModel):
     observation: Optional[str] = None
 
 class ClientCreate(ClientBase):
-    user_id: int  # The seller this client belongs to
-    supplier_id: Optional[int] = None
+    user_id: Optional[int] = None  # The seller this client belongs to
 
 class ClientUpdate(BaseModel):
     name: Optional[str] = None
@@ -36,7 +35,6 @@ class ClientUpdate(BaseModel):
     longitud: Optional[float] = None
     user_id: Optional[int] = None
     observation: Optional[str] = None
-    supplier_id: Optional[int] = None
 
 class ClientNextCodeResponse(BaseModel):
     next_code: str
@@ -44,7 +42,6 @@ class ClientNextCodeResponse(BaseModel):
 class ClientResponse(ClientBase):
     id: int
     user_id: int
-    supplier_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 

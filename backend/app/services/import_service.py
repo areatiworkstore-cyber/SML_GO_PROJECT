@@ -7,13 +7,11 @@ from openpyxl import load_workbook
 from app.models.geographic import Department, Province, District
 from app.models.master_data import DocumentType, BusinessType, ClientGroup
 from app.models.client import Client
-from app.models.supplier import Supplier
+from app.models.user import User
 from app.schemas.client import ClientCreate
-from app.schemas.supplier import SupplierCreate 
 from app.crud import crud_client
-from app.crud import crud_supplier  
 
-# Definición técnica unificada de columnas obligatorias en snake_case
+# Columnas obligatorias en snake_case normalizado
 REQUIRED_COLUMNS = {
     "dia_de_visita",
     "cod_vendedor",
@@ -46,7 +44,6 @@ def _normalize_header(header: str) -> str:
     
     s = s.replace("N°", "N").replace("N° ", "N_")
     s = re.sub(r'[^A-Z0-9\s_]', '', s)
-    
     s = re.sub(r'\s+', '_', s)
     return s.lower()
 
@@ -59,10 +56,11 @@ def _build_lookup_cache(db: Session) -> Dict[str, Any]:
     doc_types = db.query(DocumentType).all()
     business_types = db.query(BusinessType).all()
     client_groups = db.query(ClientGroup).all()
-    suppliers = db.query(Supplier).all()
-    
-    # Pre-cargar solo los códigos de clientes existentes para validar la restricción UNIQUE
-    # Usamos tuplas con (code,) para optimizar el consumo de memoria de la query
+
+    # Pre-cargar usuarios indexados por código para búsqueda O(1)
+    users = db.query(User).all()
+
+    # Pre-cargar códigos de clientes existentes para validar duplicados
     existing_codes = {c[0].upper() for c in db.query(Client.code).filter(Client.code.isnot(None)).all()}
 
     return {
@@ -72,8 +70,8 @@ def _build_lookup_cache(db: Session) -> Dict[str, Any]:
         "doc_types": {dt.description.upper(): dt for dt in doc_types},
         "business_types": {bt.description.upper(): bt for bt in business_types},
         "client_groups": {cg.description.upper(): cg for cg in client_groups},
-        "suppliers": {s.code.upper(): s for s in suppliers},
-        "existing_client_codes": existing_codes,  # <-- Guardado en caché como un Set
+        "users_by_code": {u.code.upper(): u for u in users if u.code},
+        "existing_client_codes": existing_codes,
     }
 
 
@@ -119,12 +117,13 @@ def _to_float(val) -> Optional[float]:
 
 def process_excel_import(
     file_bytes: bytes,
-    user_id: int,
     db: Session,
 ) -> Dict[str, Any]:
     """
-    Procesa el archivo Excel mapeando las columnas físicas sin subguiones
-    e inserta los registros omitiendo duplicados por número de documento o código.
+    Procesa el archivo Excel. El user_id de cada cliente se determina a partir de
+    cod_vendedor en cada fila (no del usuario autenticado).
+
+    Si cod_vendedor está vacío o no existe en BD → aborta toda la importación.
     """
     try:
         wb = load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
@@ -133,12 +132,12 @@ def process_excel_import(
 
     ws = wb.active
 
-    # Leer encabezados crudos y pasarlos por el normalizador a snake_case
+    # Leer y normalizar encabezados a snake_case
     raw_headers = [_to_str(cell.value) for cell in next(ws.iter_rows(min_row=1, max_row=1))]
     headers = [_normalize_header(h) for h in raw_headers]
     header_index = {h: i for i, h in enumerate(headers)}
 
-    # Validar que cumpla con el set mínimo técnico requerido
+    # Validar columnas obligatorias
     missing = REQUIRED_COLUMNS - set(headers)
     if missing:
         friendly_missing = [m.replace("_", " ").upper() for m in missing]
@@ -164,58 +163,67 @@ def process_excel_import(
         row_vals = list(row)
 
         try:
-            # Extracción limpia mediante llaves técnicas normalizadas en minúsculas
-            codigo_cliente = get_cell(row_vals, "cod_cliente").upper()
-            nombre = get_cell(row_vals, "razon_social").upper()
+            # ── Resolución de vendedor ──────────────────────────────────────
+            cod_vendedor = get_cell(row_vals, "cod_vendedor").strip().upper()
+
+            if not cod_vendedor:
+                raise ValueError(
+                    "El campo 'cod_vendedor' es obligatorio y está vacío en esta fila."
+                )
+
+            seller = cache["users_by_code"].get(cod_vendedor)
+            if seller is None:
+                raise ValueError(
+                    f"No existe ningún usuario con el código de vendedor '{cod_vendedor}'."
+                )
+
+            assigned_user_id = seller.id
+
+            # ── Extracción y normalización de campos del cliente ────────────
+            codigo_cliente     = get_cell(row_vals, "cod_cliente").upper()
+            nombre             = get_cell(row_vals, "razon_social").upper()
             tipo_documento_txt = get_cell(row_vals, "tipo_de_documento").upper()
-            num_documento = get_cell(row_vals, "n_documuento")
-            direccion = get_cell(row_vals, "direccion").upper()
-            distrito_txt = get_cell(row_vals, "distrito").upper()
-            provincia_txt = get_cell(row_vals, "provincia").upper()
-            departamento_txt = get_cell(row_vals, "departamento").upper()
-            tipo_negocio_txt = get_cell(row_vals, "tipo_de_negocio").upper()
-            grupo_cliente_txt = get_cell(row_vals, "grupo_cliente").upper()
-            
-            telefono = get_cell(row_vals, "telefono") or None
-            celular = get_cell(row_vals, "celular") or None
-            
-            latitud = _to_float(get_cell(row_vals, "latitud"))
-            longitud = _to_float(get_cell(row_vals, "longitud"))
-            observacion = get_cell(row_vals, "observacion").upper()
+            num_documento      = get_cell(row_vals, "n_documuento")
+            direccion          = get_cell(row_vals, "direccion").upper()
+            distrito_txt       = get_cell(row_vals, "distrito").upper()
+            provincia_txt      = get_cell(row_vals, "provincia").upper()
+            departamento_txt   = get_cell(row_vals, "departamento").upper()
+            tipo_negocio_txt   = get_cell(row_vals, "tipo_de_negocio").upper()
+            grupo_cliente_txt  = get_cell(row_vals, "grupo_cliente").upper()
+            telefono           = get_cell(row_vals, "telefono") or None
+            celular            = get_cell(row_vals, "celular") or None
+            latitud            = _to_float(get_cell(row_vals, "latitud"))
+            longitud           = _to_float(get_cell(row_vals, "longitud"))
+            observacion        = get_cell(row_vals, "observacion").upper()
 
-            # Datos del Proveedor/Vendedor
-            codigo_vend = get_cell(row_vals, "cod_vendedor").upper()
-            nombre_completo_vendedor = get_cell(row_vals, "vendedor").upper()
-
-            # Validar duplicados por 'codigo_cliente' contra el caché en memoria
+            # ── Validar duplicado por código ────────────────────────────────
             if codigo_cliente and codigo_cliente in cache["existing_client_codes"]:
                 omitted += 1
                 errors.append({
-                    "fila": row_num, 
+                    "fila": row_num,
                     "error": f"Cliente con código '{codigo_cliente}' ya existe en el sistema (omitido)."
                 })
                 continue
 
-            # Verificar duplicados por document_number
-            existing_doc = None
+            # ── Validar duplicado por número de documento ───────────────────
             if num_documento:
                 existing_doc = db.query(Client).filter(Client.document_number == num_documento).first()
-            if existing_doc:
-                omitted += 1
-                errors.append({
-                    "fila": row_num, 
-                    "error": f"Cliente con documento '{num_documento}' ya existe (omitido)."
-                })
-                continue
+                if existing_doc:
+                    omitted += 1
+                    errors.append({
+                        "fila": row_num,
+                        "error": f"Cliente con documento '{num_documento}' ya existe (omitido)."
+                    })
+                    continue
 
-            # Resolver IDs desde textos cargados en caché
-            doc_type = cache["doc_types"].get(tipo_documento_txt) if tipo_documento_txt else None
-            doc_type_id = doc_type.id if doc_type else None
+            # ── Resolver IDs desde textos ───────────────────────────────────
+            doc_type        = cache["doc_types"].get(tipo_documento_txt) if tipo_documento_txt else None
+            doc_type_id     = doc_type.id if doc_type else None
 
-            business_type = cache["business_types"].get(tipo_negocio_txt) if tipo_negocio_txt else None
+            business_type   = cache["business_types"].get(tipo_negocio_txt) if tipo_negocio_txt else None
             business_type_id = business_type.id if business_type else None
 
-            client_group = cache["client_groups"].get(grupo_cliente_txt) if grupo_cliente_txt else None
+            client_group    = cache["client_groups"].get(grupo_cliente_txt) if grupo_cliente_txt else None
             client_group_id = client_group.id if client_group else None
 
             district_id = None
@@ -224,22 +232,7 @@ def process_excel_import(
                     cache, departamento_txt, provincia_txt, distrito_txt
                 )
 
-            # Inferencia y creación On-The-Fly de Proveedores
-            supplier_id = None
-            if codigo_vend:
-                supplier_obj = cache["suppliers"].get(codigo_vend)
-                if not supplier_obj:
-                    nuevo_prov = SupplierCreate(
-                        code=codigo_vend[:50],
-                        names=nombre_completo_vendedor[:255] if nombre_completo_vendedor else f"PROVEEDOR {codigo_vend}",
-                        active=True
-                    )
-                    supplier_obj = crud_supplier.create_supplier(db, supplier_in=nuevo_prov)
-                    cache["suppliers"][codigo_vend] = supplier_obj
-                
-                supplier_id = supplier_obj.id
-
-            # Construir payload de la entidad
+            # ── Construir y persistir el cliente ────────────────────────────
             client_data = ClientCreate(
                 code=codigo_cliente[:6] if codigo_cliente else None,
                 name=nombre[:50] if nombre else None,
@@ -252,20 +245,18 @@ def process_excel_import(
                 cellphone=celular[:9] if celular else None,
                 telephone=telefono[:9] if telefono else None,
                 active=True,
-                user_id=user_id,          
-                supplier_id=supplier_id,  
+                user_id=assigned_user_id,
                 latitud=latitud,
                 longitud=longitud,
                 observation=observacion if observacion else "SIN OBSERVACIÓN",
             )
 
             crud_client.create_client(db, client_in=client_data)
-            
-            # Si se crea con éxito, agregamos el código al set temporal de caché
-            # por si el mismo código viene repetido más abajo en el mismo archivo Excel
+
+            # Actualizar caché de códigos para detectar duplicados dentro del mismo archivo
             if codigo_cliente:
                 cache["existing_client_codes"].add(codigo_cliente)
-                
+
             created += 1
 
         except Exception as e:

@@ -30,10 +30,9 @@ def create_client(
     Registra un nuevo cliente con coordenadas GPS (latitud/longitud).
     """
     roles = [ru.role_details.role for ru in current_user.roles]
-    if "ADMIN" not in roles:
+    if "ADMIN" not in roles or client_in.user_id is None:
         client_in.user_id = current_user.id
 
-    # Check if client code is already registered for this seller/user
     db_client = crud_client.get_client_by_code_and_user(
         db, code=client_in.code, user_id=client_in.user_id
     )
@@ -52,14 +51,13 @@ def read_clients(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Obtiene la lista de clientes. Admin puede consultar todos o filtrar por user_id, 
+    Obtiene la lista de clientes. Admin puede consultar todos o filtrar por user_id,
     los vendedores solo consultarán sus propios clientes.
     """
-    # Check if user is seller (VENDEDOR). If so, force filter to their own ID.
     roles = [ru.role_details.role for ru in current_user.roles]
     if "ADMIN" not in roles:
         user_id = current_user.id
-        
+
     return crud_client.get_clients(db, user_id=user_id)
 
 
@@ -75,12 +73,11 @@ def read_client(
     client = crud_client.get_client_by_id(db, client_id=client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
-        
-    # Check authorization (Sellers can only access their own clients)
+
     roles = [ru.role_details.role for ru in current_user.roles]
     if "ADMIN" not in roles and client.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="No tienes permisos para realizar esta acción")
-        
+
     return client
 
 
@@ -97,11 +94,11 @@ def update_client(
     client = crud_client.get_client_by_id(db, client_id=client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
-        
+
     roles = [ru.role_details.role for ru in current_user.roles]
     if "ADMIN" not in roles and client.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="No tienes permisos para realizar esta acción")
-        
+
     return crud_client.update_client(db, db_client=client, client_in=client_in)
 
 
@@ -122,9 +119,9 @@ def get_maps_redirect_url(
             status_code=400,
             detail="Las coordenadas del cliente (latitud/longitud) no están registradas."
         )
-    # Retorna URL de redirección a Google Maps
     url = f"https://www.google.com/maps/search/?api=1&query={client.latitud},{client.longitud}"
     return {"url": url}
+
 
 @router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_client(
@@ -138,11 +135,11 @@ def delete_client(
     client = crud_client.get_client_by_id(db, client_id=client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
-        
+
     roles = [ru.role_details.role for ru in current_user.roles]
     if "ADMIN" not in roles and client.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="No tienes permisos para realizar esta acción")
-        
+
     crud_client.delete_client(db, client_id=client_id)
     return None
 
@@ -155,8 +152,7 @@ async def import_clients_from_excel(
 ):
     """
     Importa clientes de forma masiva desde un archivo .xlsx.
-    El user_id se asigna automáticamente desde el usuario autenticado.
-    Los ADMIN pueden importar; vendedores también (a su propio user_id).
+    El user_id de cada cliente se determina por cod_vendedor en cada fila del Excel.
     """
     if not file.filename or not file.filename.endswith(".xlsx"):
         raise HTTPException(
@@ -169,7 +165,6 @@ async def import_clients_from_excel(
     try:
         result = process_excel_import(
             file_bytes=file_bytes,
-            user_id=current_user.id,
             db=db,
         )
     except ValueError as e:
