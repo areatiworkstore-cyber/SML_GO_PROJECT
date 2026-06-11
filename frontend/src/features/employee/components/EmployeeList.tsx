@@ -100,7 +100,7 @@ export const EmployeeList: React.FC = () => {
         });
         if (confirmed) {
             try {
-                showSuccess('Empleado actualizado correctamente');
+                showSuccess('Empleado eliminado correctamente');
                 loadEmployees();
             } catch (error) {
                 showError(error);

@@ -54,7 +54,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({
       cellphone: '',
       observation: '',
       user_id: user?.id || 0,
-      supplier_id: null,
+      supplier_id: undefined,
     }
   );
 
@@ -197,10 +197,10 @@ export const ClientForm: React.FC<ClientFormProps> = ({
   // Callback exitoso del Modal de Proveedores
   const handleSupplierCreatedSuccess = async (created: SupplierResponse) => {
     setOpenSupplierModal(false);
-    
+
     // Refrescar lista local en segundo plano
     const updatedList = await fetchSuppliersData();
-    
+
     // Vincular inmediatamente al formulario
     const foundInNewList = updatedList.find(s => s.id === created.id) || created;
     setSelectedSupplier(foundInNewList);

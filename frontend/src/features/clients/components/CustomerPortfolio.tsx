@@ -27,7 +27,7 @@ import { useNotification } from '../../../context/NotificationContext';
 import { employeeService } from '../../employee/services';
 import { geographicService } from '../../geographic/services';
 import { apiClient } from '../../../services/api';
-import type { ClientResponse, ClientUpdate, ClientCreate } from '../types';
+import type { ClientResponse, ClientCreate } from '../types';
 import type { Employee } from '../../employee/types';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -147,10 +147,10 @@ export const CustomerPortfolio: React.FC = () => {
 
   useEffect(() => {
     if (viewModalOpen && selectedClientData?.district_id) {
-       geographicService.getDistricts().then(districts => {
-          const found = districts.find((d: any) => d.id === selectedClientData.district_id);
-          if (found) setDistrictName(found.name);
-       }).catch(() => setDistrictName('Desconocido'));
+      geographicService.getDistricts().then(districts => {
+        const found = districts.find((d: any) => d.id === selectedClientData.district_id);
+        if (found) setDistrictName(found.name);
+      }).catch(() => setDistrictName('Desconocido'));
     }
   }, [viewModalOpen, selectedClientData]);
 
@@ -215,21 +215,21 @@ export const CustomerPortfolio: React.FC = () => {
     } catch (error) {
       showError("Error al cargar los clientes asignados.");
       setClients([
-        { 
-            id: 101, 
-            code: 'CLI001', 
-            name: 'Tecnologías del Sur S.A.C.', 
-            document_number: '20601122334', 
-            document_type_id: 2,
-            cellphone: '951234567', 
-            telephone: null,
-            active: true, 
-            user_id: advisor.id, 
-            address: 'Av. El Sol 456', 
-            district_id: 1,
-            business_type_id: 1,
-            client_group_id: 1,
-            observation: 'Cliente Premium' 
+        {
+          id: 101,
+          code: 'CLI001',
+          name: 'Tecnologías del Sur S.A.C.',
+          document_number: '20601122334',
+          document_type_id: 2,
+          cellphone: '951234567',
+          telephone: null,
+          active: true,
+          user_id: advisor.id,
+          address: 'Av. El Sol 456',
+          district_id: 1,
+          business_type_id: 1,
+          client_group_id: 1,
+          observation: 'Cliente Premium'
         }
       ].filter(c => c.user_id === advisor.id) as ClientResponse[]);
     } finally {
@@ -603,17 +603,17 @@ export const CustomerPortfolio: React.FC = () => {
                         />
                       </TableCell>
                       <TableCell align="center">
-                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                              <Tooltip title="Ver detalles">
-                                  <IconButton size="small" onClick={() => handleViewClient(cli)}>👁️</IconButton>
-                              </Tooltip>
-                              <Tooltip title="Editar">
-                                  <IconButton size="small" color="primary" onClick={() => handleEditClient(cli)}>✏️</IconButton>
-                              </Tooltip>
-                              <Tooltip title="Desactivar">
-                                  <IconButton size="small" color="error" onClick={() => handleDeactivateClient(cli.id)}>🚫</IconButton>
-                              </Tooltip>
-                          </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                          <Tooltip title="Ver detalles">
+                            <IconButton size="small" onClick={() => handleViewClient(cli)}>👁️</IconButton>
+                          </Tooltip>
+                          <Tooltip title="Editar">
+                            <IconButton size="small" color="primary" onClick={() => handleEditClient(cli)}>✏️</IconButton>
+                          </Tooltip>
+                          <Tooltip title="Desactivar">
+                            <IconButton size="small" color="error" onClick={() => handleDeactivateClient(cli.id)}>🚫</IconButton>
+                          </Tooltip>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -632,83 +632,83 @@ export const CustomerPortfolio: React.FC = () => {
         </Paper>
       )}
 
-        <Dialog open={viewModalOpen} onClose={closeModals} maxWidth="md" fullWidth>
-            <DialogTitle sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider' }}>
-                📋 Información Completa del Cliente
-            </DialogTitle>
-            <DialogContent sx={{ p: 3 }}>
-                {selectedClientData && (
-                    <Grid container spacing={3}>
-                        <Grid size={{ xs: 12 }}>
-                            <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold', mb: 1 }}>Información General</Typography>
-                            <Divider sx={{ mb: 2 }} />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <Typography variant="body2" color="text.secondary">Código / Razón Social</Typography>
-                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{selectedClientData.code} - {selectedClientData.name}</Typography>
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <Typography variant="body2" color="text.secondary">Clasificación Comercial</Typography>
-                            <Typography variant="body1">{CLIENT_GROUPS[selectedClientData.client_group_id] || 'N/A'} • {BIZ_TYPES[selectedClientData.business_type_id] || 'N/A'}</Typography>
-                        </Grid>
+      <Dialog open={viewModalOpen} onClose={closeModals} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider' }}>
+          📋 Información Completa del Cliente
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          {selectedClientData && (
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold', mb: 1 }}>Información General</Typography>
+                <Divider sx={{ mb: 2 }} />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Typography variant="body2" color="text.secondary">Código / Razón Social</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{selectedClientData.code} - {selectedClientData.name}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Typography variant="body2" color="text.secondary">Clasificación Comercial</Typography>
+                <Typography variant="body1">{CLIENT_GROUPS[selectedClientData.client_group_id] || 'N/A'} • {BIZ_TYPES[selectedClientData.business_type_id] || 'N/A'}</Typography>
+              </Grid>
 
-                        <Grid size={{ xs: 12 }}>
-                            <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold', mt: 2, mb: 1 }}>Información Fiscal / Contacto</Typography>
-                            <Divider sx={{ mb: 2 }} />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <Typography variant="body2" color="text.secondary">Documento</Typography>
-                            <Typography variant="body1">{DOC_TYPES[selectedClientData.document_type_id] || 'Doc.'} {selectedClientData.document_number}</Typography>
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <Typography variant="body2" color="text.secondary">Celular / Teléfono</Typography>
-                            <Typography variant="body1">{selectedClientData.cellphone || 'N/A'} {selectedClientData.telephone ? ` / ${selectedClientData.telephone}` : ''}</Typography>
-                        </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold', mt: 2, mb: 1 }}>Información Fiscal / Contacto</Typography>
+                <Divider sx={{ mb: 2 }} />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Typography variant="body2" color="text.secondary">Documento</Typography>
+                <Typography variant="body1">{DOC_TYPES[selectedClientData.document_type_id] || 'Doc.'} {selectedClientData.document_number}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Typography variant="body2" color="text.secondary">Celular / Teléfono</Typography>
+                <Typography variant="body1">{selectedClientData.cellphone || 'N/A'} {selectedClientData.telephone ? ` / ${selectedClientData.telephone}` : ''}</Typography>
+              </Grid>
 
-                        <Grid size={{ xs: 12 }}>
-                            <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold', mt: 2, mb: 1 }}>Ubicación y Estado</Typography>
-                            <Divider sx={{ mb: 2 }} />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <Typography variant="body2" color="text.secondary">Dirección</Typography>
-                            <Typography variant="body1">{selectedClientData.address} {districtName ? `(${districtName})` : ''}</Typography>
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <Typography variant="body2" color="text.secondary">Estado del Cliente</Typography>
-                            <Chip 
-                                label={selectedClientData.active ? 'ASIGNADO / ACTIVO' : 'INACTIVO'} 
-                                size="small" 
-                                sx={{ mt: 0.5, fontWeight: 'bold', bgcolor: selectedClientData.active ? 'rgba(46, 125, 50, 0.12)' : 'rgba(211, 47, 47, 0.12)', color: selectedClientData.active ? 'success.dark' : 'error.dark' }} 
-                            />
-                        </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold', mt: 2, mb: 1 }}>Ubicación y Estado</Typography>
+                <Divider sx={{ mb: 2 }} />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Typography variant="body2" color="text.secondary">Dirección</Typography>
+                <Typography variant="body1">{selectedClientData.address} {districtName ? `(${districtName})` : ''}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Typography variant="body2" color="text.secondary">Estado del Cliente</Typography>
+                <Chip
+                  label={selectedClientData.active ? 'ASIGNADO / ACTIVO' : 'INACTIVO'}
+                  size="small"
+                  sx={{ mt: 0.5, fontWeight: 'bold', bgcolor: selectedClientData.active ? 'rgba(46, 125, 50, 0.12)' : 'rgba(211, 47, 47, 0.12)', color: selectedClientData.active ? 'success.dark' : 'error.dark' }}
+                />
+              </Grid>
 
-                        <Grid size={{ xs: 12 }}>
-                            <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold', mt: 2, mb: 1 }}>Observaciones / Notas Internas</Typography>
-                            <Divider sx={{ mb: 2 }} />
-                            <Typography variant="body1" sx={{ fontStyle: selectedClientData.observation ? 'normal' : 'italic', color: selectedClientData.observation ? 'text.primary' : 'text.secondary' }}>
-                                {selectedClientData.observation || 'No hay observaciones registradas para este cliente.'}
-                            </Typography>
-                        </Grid>
-                    </Grid>
-                )}
-            </DialogContent>
-            <DialogActions sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-                <Button onClick={closeModals} variant="outlined" color="inherit">Cerrar</Button>
-            </DialogActions>
-        </Dialog>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold', mt: 2, mb: 1 }}>Observaciones / Notas Internas</Typography>
+                <Divider sx={{ mb: 2 }} />
+                <Typography variant="body1" sx={{ fontStyle: selectedClientData.observation ? 'normal' : 'italic', color: selectedClientData.observation ? 'text.primary' : 'text.secondary' }}>
+                  {selectedClientData.observation || 'No hay observaciones registradas para este cliente.'}
+                </Typography>
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Button onClick={closeModals} variant="outlined" color="inherit">Cerrar</Button>
+        </DialogActions>
+      </Dialog>
 
-        <Dialog open={editModalOpen} onClose={closeModals} maxWidth="md" fullWidth>
-            <DialogContent sx={{ p: 0 }}>
-                {selectedClientData && (
-                    <ClientForm 
-                        initialData={selectedClientData as unknown as ClientCreate} 
-                        clientId={selectedClientData.id}
-                        onSubmitSuccess={() => { closeModals(); if (selectedAdvisor) handleExplorePortfolio(selectedAdvisor); }}
-                        onCancel={closeModals}
-                    />
-                )}
-            </DialogContent>
-        </Dialog>
+      <Dialog open={editModalOpen} onClose={closeModals} maxWidth="md" fullWidth>
+        <DialogContent sx={{ p: 0 }}>
+          {selectedClientData && (
+            <ClientForm
+              initialData={selectedClientData as unknown as ClientCreate}
+              clientId={selectedClientData.id}
+              onSubmitSuccess={() => { closeModals(); if (selectedAdvisor) handleExplorePortfolio(selectedAdvisor); }}
+              onCancel={closeModals}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
