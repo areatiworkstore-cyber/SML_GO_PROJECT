@@ -15,13 +15,6 @@ fun TokenResponseDto.toDomain(): String? = accessToken
 fun DocumentTypeDto.toDomain() = DocumentType(id = id, description = description)
 fun BusinessTypeDto.toDomain() = BusinessType(id = id, description = description)
 fun ClientGroupDto.toDomain()  = ClientGroup(id = id, description = description)
-fun SupplierDto.toDomain()     = Supplier(id = id, code = code, names = names, active = active)
-
-fun Supplier.toRequestDto() = SupplierRequestDto(
-    code   = code,
-    names  = names,
-    active = active
-)
 fun RoleDto.toDomain()         = Role(id = id, role = role)
 fun RoleUserDto.toDomain() = Role(
     id   = roleDetails?.id   ?: roleId,
@@ -98,7 +91,6 @@ fun ClientDto.toDomain() = Client(
     latitude       = latitude,
     longitude      = longitude,
     observation    = observation,
-    supplier       = supplierId?.let { Supplier(id = it, code = "", names = "", active = true) }
 )
 
 // ── Domain Model → Request DTO ────────────────────────────────────────────
@@ -117,7 +109,6 @@ fun Client.toRequestDto() = ClientRequestDto(
     latitude       = latitude,
     longitude      = longitude,
     observation    = observation,
-    supplierId     = supplier?.id
 )
 
 // ── Next-Code Client ────────────────────────────────────────────────────────────────

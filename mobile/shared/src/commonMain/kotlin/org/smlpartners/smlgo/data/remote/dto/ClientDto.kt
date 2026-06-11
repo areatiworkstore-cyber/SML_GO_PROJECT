@@ -21,7 +21,6 @@ data class ClientDto(
     @SerialName("longitud")         val longitude      : Double?  = null,
     @SerialName("observation")      val observation    : String?  = null,
     @SerialName("user_id")          val userId         : Int?     = null,
-    @SerialName("supplier_id")      val supplierId     : Int?     = null,
     @SerialName("created_at")       val createdAt      : String?  = null,
     @SerialName("updated_at")       val updatedAt      : String?  = null
 )
@@ -42,7 +41,6 @@ data class ClientRequestDto(
     @SerialName("latitud")              val latitude        : Double?,
     @SerialName("longitud")             val longitude       : Double?,
     @SerialName("observation")          val observation     : String?,
-    @SerialName("supplier_id")          val supplierId      : Int?
 )
 
 @Serializable

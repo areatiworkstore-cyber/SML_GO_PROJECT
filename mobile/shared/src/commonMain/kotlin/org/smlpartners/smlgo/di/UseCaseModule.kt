@@ -6,7 +6,6 @@ import org.smlpartners.smlgo.domain.usecase.masterdata.*
 import org.smlpartners.smlgo.domain.usecase.route.*
 import org.smlpartners.smlgo.domain.usecase.schedule.*
 import org.smlpartners.smlgo.domain.usecase.waypoint.*
-import org.smlpartners.smlgo.domain.usecase.supplier.*
 import org.smlpartners.smlgo.domain.usecase.role.*
 import org.smlpartners.smlgo.domain.usecase.geography.*
 import org.koin.dsl.module
@@ -50,11 +49,10 @@ val useCaseModule = module {
     factory { GetDocumentTypesUseCase(get()) }
     factory { GetBusinessTypesUseCase(get()) }
     factory { GetClientGroupsUseCase(get()) }
-    factory { GetSuppliersUseCase(get()) }
     factory { GetRolesUseCase(get()) }
     factory { GetDepartmentsUseCase(get()) }
     factory { GetProvincesUseCase(get()) }
     factory { GetDistrictsUseCase(get()) }
-    factory { GetClientFormMasterDataUseCase(get(), get()) }
+    factory { GetClientFormMasterDataUseCase(get()) }
     factory { GetProfileMasterDataUseCase(get(), get()) }
 }

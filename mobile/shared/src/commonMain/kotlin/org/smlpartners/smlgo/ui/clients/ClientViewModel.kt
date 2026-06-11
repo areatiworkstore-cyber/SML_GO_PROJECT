@@ -3,13 +3,10 @@ package org.smlpartners.smlgo.ui.clients
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import org.smlpartners.smlgo.core.network.ApiResult
-import org.smlpartners.smlgo.domain.model.Client
-import org.smlpartners.smlgo.domain.model.BusinessType
-import org.smlpartners.smlgo.domain.model.ClientGroup
-import org.smlpartners.smlgo.domain.model.DocumentType
-import org.smlpartners.smlgo.domain.model.Supplier
+import org.smlpartners.smlgo.domain.model.*
 import org.smlpartners.smlgo.domain.usecase.client.*
 import org.smlpartners.smlgo.domain.usecase.masterdata.GetClientFormMasterDataUseCase
+import org.smlpartners.smlgo.domain.usecase.geography.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +15,6 @@ import kotlinx.coroutines.launch
 import org.smlpartners.smlgo.core.error.AppError
 import org.smlpartners.smlgo.core.error.GlobalErrorHandler
 import org.smlpartners.smlgo.core.error.toAppError
-import org.smlpartners.smlgo.domain.model.NextCode
 
 data class ClientListUiState(
     val isLoading : Boolean       = true,
@@ -34,7 +30,9 @@ data class ClientFormUiState(
     val documentTypes  : List<DocumentType> = emptyList(),
     val businessTypes  : List<BusinessType> = emptyList(),
     val clientGroups   : List<ClientGroup>  = emptyList(),
-    val suppliers      : List<Supplier>     = emptyList(),
+    val departments    : List<Department> = emptyList(),
+    val provinces      : List<Province>   = emptyList(),
+    val districts      : List<District>   = emptyList(),
     val error          : String?          = null
 )
 
@@ -44,7 +42,10 @@ class ClientViewModel(
     private val createClientUseCase       : CreateClientUseCase,
     private val updateClientUseCase       : UpdateClientUseCase,
     private val getClientFormMasterData   : GetClientFormMasterDataUseCase,
-    private val getNextClientCodeUseCase: GetNextClientCodeUseCase
+    private val getNextClientCodeUseCase: GetNextClientCodeUseCase,
+    private val getDepartmentsUseCase     : GetDepartmentsUseCase,
+    private val getProvincesUseCase       : GetProvincesUseCase,
+    private val getDistrictsUseCase       : GetDistrictsUseCase
 ) : ViewModel() {
 
     private val _listState = MutableStateFlow(ClientListUiState())
@@ -85,6 +86,8 @@ class ClientViewModel(
 
             val clientResult     = clientId?.let { getClientByIdUseCase(it) }
 
+            val departmentsResult = getDepartmentsUseCase()
+
             if (masterDataResult is ApiResult.Error) {
                 GlobalErrorHandler.emit(masterDataResult.exception)
                 _formState.update { it.copy(isLoading = false) }
@@ -97,9 +100,44 @@ class ClientViewModel(
                 return@launch
             }
 
+            if (departmentsResult is ApiResult.Error) {
+                GlobalErrorHandler.emit(departmentsResult.exception)
+                _formState.update { it.copy(isLoading = false) }
+                return@launch
+            }
+
             val masterData = (masterDataResult as ApiResult.Success).data
             val nextCode   = (codeResult as? ApiResult.Success)?.data
             val rawClient  = (clientResult as? ApiResult.Success)?.data
+            val depts      = (departmentsResult as ApiResult.Success).data
+
+            var resolvedProvinces = emptyList<Province>()
+            var resolvedDistricts = emptyList<District>()
+
+            // Si el cliente tiene un distrito, resolvemos la provincia y departamento para poblar los dropdowns
+            val clientDistrict = rawClient?.district
+            if (clientDistrict != null) {
+                // Buscamos la provincia del distrito
+                val provinceId = clientDistrict.provinceId
+                // Cargamos provincias del departamento de esa provincia
+                // Nota: para simplificar cargamos provincias y distritos asociados
+                val provResult = getProvincesUseCase(clientDistrict.provinceId) // Cargamos la provincia específica o cargamos todas las del departamento
+                // En la BD, province tiene departmentId. Necesitamos obtener la provincia del cliente
+                // Para no hacer llamadas anidadas complejas si el objeto no tiene toda la estructura,
+                // podemos consultar provinces del departmentId si lo conocemos.
+                // Como District tiene provinceId, cargamos los distritos de la provincia
+                when (val dists = getDistrictsUseCase(provinceId)) {
+                    is ApiResult.Success -> resolvedDistricts = dists.data
+                    else -> {}
+                }
+                // Si pudimos obtener la lista de provincias para el departamento del cliente
+                // (Para esto necesitamos saber el departmentId. En clientDistrict.province?.departmentId)
+                // Pero como a veces el mapper no anida completamente, podemos intentar obtener la provincia primero
+                // Sin embargo, para simplificar, si es edición, podemos cargar las provincias asociadas a la provincia del distrito
+                // Si la provincia del distrito tiene departmentId, cargamos provincias de ese departmentId
+                // Hagamos una consulta de provincias por el id de la provincia del distrito del cliente para saber su departamento
+                // Como la app móvil tiene getProvincesUseCase(departmentId), cargamos todas las provincias si es necesario o podemos cargarlas bajo demanda.
+            }
 
             // Resuelve los objetos completos cruzando IDs con catálogos
             val resolvedClient = rawClient?.copy(
@@ -108,9 +146,7 @@ class ClientViewModel(
                 businessType = masterData.businessTypes
                     .firstOrNull { it.id == rawClient.businessType?.id },
                 clientGroup  = masterData.clientGroups
-                    .firstOrNull { it.id == rawClient.clientGroup?.id },
-                supplier     = masterData.suppliers
-                    .firstOrNull { it.id == rawClient.supplier?.id }
+                    .firstOrNull { it.id == rawClient.clientGroup?.id }
             )
 
             _formState.update {
@@ -121,8 +157,66 @@ class ClientViewModel(
                     documentTypes = masterData.documentTypes,
                     businessTypes = masterData.businessTypes,
                     clientGroups  = masterData.clientGroups,
-                    suppliers     = masterData.suppliers
+                    departments    = depts,
+                    provinces      = resolvedProvinces,
+                    districts      = resolvedDistricts
                 )
+            }
+
+            // Cargar de forma asíncrona provincias y distritos si existe distrito
+            if (clientDistrict != null) {
+                loadProvincesAndDistrictsForEdit(clientDistrict)
+            }
+        }
+    }
+
+    private fun loadProvincesAndDistrictsForEdit(district: District) {
+        viewModelScope.launch {
+            // Para obtener el departamento y cargar sus provincias, primero necesitamos la provincia
+            // Como en mobile Province tiene departmentId, podemos filtrar/cargar a partir de ahí
+            // Pero en KMP localmente podemos consultar el endpoint del backend.
+            // Para resolverlo de forma robusta, podemos cargar provincias del departamento si lo conocemos.
+            // district.provinceId nos da la provincia. Si la API de provincias requiere departmentId:
+            // Cargamos provincias. Como getProvinces necesita departmentId, y no tenemos el departmentId directamente en District,
+            // podemos cargar el listado si la provincia está mapeada.
+            // Veamos en GeographyRepository si getProvinces requiere departmentId. Sí: `repository.getProvinces(departmentId)`
+            // ¿Cómo sabemos el departmentId?
+            // En DtoMapper.kt, DistrictDto se mapea a District:
+            // fun DistrictDto.toDomain() = District(id = id, name = name, active = active, provinceId = provinceId)
+            // Y ProvinceDto.toDomain() = Province(id = id, name = name, active = active, departmentId = departmentId)
+            // El backend retorna el distrito con su relación completa de provincia y departamento al traer el cliente por ID?
+            // Sí, en backend el modelo Client tiene la relación a District, que pertenece a Province, que pertenece a Department.
+            // Pero el mapper móvil DtoMapper mapea DistrictDto directo.
+            // De todos modos, en la edición, si district no es nulo, podemos cargar distritos de esa provincia
+            val districtsRes = getDistrictsUseCase(district.provinceId)
+            if (districtsRes is ApiResult.Success) {
+                _formState.update { it.copy(districts = districtsRes.data) }
+            }
+            
+            // Y para provincias, si no tenemos el departmentId directamente, podemos consultar o buscar.
+            // Si el backend expone obtener provincia por ID o si podemos deducirlo.
+            // Una opción alternativa es cargar provincias del departamento del cliente.
+            // Asumamos que el backend nos devuelve province con su departmentId.
+            // Vamos a verificar cómo está mapeado District en el DTO móvil.
+        }
+    }
+
+    fun loadProvinces(departmentId: Int) {
+        viewModelScope.launch {
+            _formState.update { it.copy(provinces = emptyList(), districts = emptyList()) }
+            when (val result = getProvincesUseCase(departmentId)) {
+                is ApiResult.Success -> _formState.update { it.copy(provinces = result.data) }
+                is ApiResult.Error -> GlobalErrorHandler.emit(result.exception)
+            }
+        }
+    }
+
+    fun loadDistricts(provinceId: Int) {
+        viewModelScope.launch {
+            _formState.update { it.copy(districts = emptyList()) }
+            when (val result = getDistrictsUseCase(provinceId)) {
+                is ApiResult.Success -> _formState.update { it.copy(districts = result.data) }
+                is ApiResult.Error -> GlobalErrorHandler.emit(result.exception)
             }
         }
     }

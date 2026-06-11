@@ -15,7 +15,6 @@ val repositoryModule = module {
     single { RoleApiService(get()) }
     single { RouteApiService(get()) }
     single { ScheduleApiService(get()) }
-    single { SupplierApiService(get()) }
     single { WaypointApiService(get()) }
 
     // ── Repositories ─────────────────────────────────────────────────
@@ -26,6 +25,5 @@ val repositoryModule = module {
     single<RoleRepository>       { RoleRepositoryImpl(get()) }
     single<RouteRepository>      { RouteRepositoryImpl(get()) }
     single<ScheduleRepository>   { ScheduleRepositoryImpl(get()) }
-    single<SupplierRepository>   { SupplierRepositoryImpl(get()) }
     single<WaypointRepository>   { WaypointRepositoryImpl(get()) }
-}
+}

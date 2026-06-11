@@ -22,6 +22,7 @@ fun createHttpClient(
     onTokenExpired: () -> Unit = {}   // ← callback para cerrar sesión si expira
 ): HttpClient {
     return HttpClient(httpClientEngine()) {
+        expectSuccess = true
         install(ContentNegotiation) {
             // ── Serialización ────────────────────────────────────────────
             json(

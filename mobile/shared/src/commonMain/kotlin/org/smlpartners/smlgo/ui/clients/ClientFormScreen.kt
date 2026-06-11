@@ -45,13 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import org.koin.compose.viewmodel.koinViewModel
-import org.smlpartners.smlgo.domain.model.BusinessType
-import org.smlpartners.smlgo.domain.model.Client
-import org.smlpartners.smlgo.domain.model.ClientGroup
-import org.smlpartners.smlgo.domain.model.DocumentType
-import org.smlpartners.smlgo.domain.model.Supplier
+import org.smlpartners.smlgo.domain.model.*
 import org.smlpartners.smlgo.ui.shared.components.ErrorSnackbar
-import org.smlpartners.smlgo.ui.shared.components.LoadingOverlay
 import org.smlpartners.smlgo.ui.shared.components.SMLGoButton
 import org.smlpartners.smlgo.ui.shared.components.SMLGoTextField
 import org.smlpartners.smlgo.ui.shared.components.SMLGoTopBar
@@ -79,7 +74,11 @@ fun ClientFormScreen(
     var selectedDocumentType by remember { mutableStateOf<DocumentType?>(null) }
     var selectedBusinessType by remember { mutableStateOf<BusinessType?>(null) }
     var selectedClientGroup  by remember { mutableStateOf<ClientGroup?>(null) }
-    var selectedSupplier     by remember { mutableStateOf<Supplier?>(null) }
+
+    // Campos geográficos
+    var selectedDept by remember { mutableStateOf<Department?>(null) }
+    var selectedProv by remember { mutableStateOf<Province?>(null) }
+    var selectedDist by remember { mutableStateOf<District?>(null) }
 
     // Carga los datos del formulario
     LaunchedEffect(Unit) {
@@ -99,7 +98,28 @@ fun ClientFormScreen(
         selectedDocumentType = c?.documentType
         selectedBusinessType = c?.businessType
         selectedClientGroup  = c?.clientGroup
-        selectedSupplier     = c?.supplier
+        selectedDist         = c?.district
+    }
+
+    // Resolver geografía en edición si las listas se cargan
+    LaunchedEffect(formState.provinces) {
+        val c = formState.client
+        if (c?.district != null && selectedProv == null) {
+            selectedProv = formState.provinces.firstOrNull { it.id == c.district.provinceId }
+        }
+    }
+
+    LaunchedEffect(selectedProv, formState.departments) {
+        if (selectedProv != null && selectedDept == null) {
+            selectedDept = formState.departments.firstOrNull { it.id == selectedProv?.departmentId }
+        }
+    }
+
+    LaunchedEffect(formState.districts) {
+        val c = formState.client
+        if (c?.district != null && selectedDist == null) {
+            selectedDist = formState.districts.firstOrNull { it.id == c.district.id }
+        }
     }
 
     // Navega al guardar
@@ -164,7 +184,6 @@ fun ClientFormScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        // ← usa nextCode del objeto NextCode
                         Text(
                             text       = formState.clientCode?.nextCode ?: "Generando...",
                             style      = MaterialTheme.typography.titleMedium,
@@ -231,13 +250,44 @@ fun ClientFormScreen(
                         display  = { it.description }
                     )
                 }
-                if (formState.suppliers.isNotEmpty()) {
+
+                // ── Ubicación Geográfica ───────────────────────────────
+                if (formState.departments.isNotEmpty()) {
                     SMLGoDropdown(
-                        label    = "Proveedor",
-                        options  = formState.suppliers,
-                        selected = selectedSupplier,
-                        onSelect = { selectedSupplier = it },
-                        display  = { it.names }
+                        label    = "Departamento *",
+                        options  = formState.departments,
+                        selected = selectedDept,
+                        onSelect = { dept ->
+                            selectedDept = dept
+                            selectedProv = null
+                            selectedDist = null
+                            viewModel.loadProvinces(dept.id)
+                        },
+                        display  = { it.name }
+                    )
+                }
+                if (formState.provinces.isNotEmpty() || selectedProv != null) {
+                    SMLGoDropdown(
+                        label    = "Provincia *",
+                        options  = formState.provinces,
+                        selected = selectedProv,
+                        onSelect = { prov ->
+                            selectedProv = prov
+                            selectedDist = null
+                            viewModel.loadDistricts(prov.id)
+                        },
+                        display  = { it.name }
+                    )
+                }
+                if (formState.districts.isNotEmpty() || selectedDist != null) {
+                    SMLGoDropdown(
+                        label    = "Distrito *",
+                        options  = formState.districts,
+                        selected = selectedDist,
+                        onSelect = { dist ->
+                            selectedDist = dist
+                        },
+                        display  = { it.name }
                     )
                 }
 
@@ -305,7 +355,7 @@ fun ClientFormScreen(
                                 documentType   = selectedDocumentType,
                                 documentNumber = documentNumber.ifBlank { null },
                                 address        = address.ifBlank { null },
-                                district       = formState.client?.district,
+                                district       = selectedDist,
                                 businessType   = selectedBusinessType,
                                 clientGroup    = selectedClientGroup,
                                 cellphone      = cellphone.ifBlank { null },
@@ -314,7 +364,6 @@ fun ClientFormScreen(
                                 latitude       = formState.client?.latitude,
                                 longitude      = formState.client?.longitude,
                                 observation    = observation.ifBlank { null },
-                                supplier       = selectedSupplier
                             )
                         )
                     },
