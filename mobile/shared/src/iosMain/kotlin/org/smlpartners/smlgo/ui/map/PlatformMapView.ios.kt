@@ -12,6 +12,10 @@ import platform.MapKit.MKCoordinateRegionMakeWithDistance
 import platform.MapKit.MKMapView
 import platform.MapKit.MKPointAnnotation
 
+import platform.MapKit.MKMapViewDelegateProtocol
+import platform.MapKit.MKAnnotationView
+import platform.darwin.NSObject
+
 @OptIn(ExperimentalForeignApi::class)
 @Composable
 actual fun PlatformMapView(
@@ -20,10 +24,28 @@ actual fun PlatformMapView(
     modifier         : Modifier
 ) {
     val locationManager = remember { platform.CoreLocation.CLLocationManager() }
+    val delegate = remember(markers) {
+        object : NSObject(), MKMapViewDelegateProtocol {
+            override fun mapView(mapView: MKMapView, didSelectAnnotationView: MKAnnotationView) {
+                val annotation = didSelectAnnotationView.annotation ?: return
+                val title = annotation.title
+                val subtitle = annotation.subtitle
+                val selected = markers.firstOrNull { it.title == title && it.snippet == subtitle }
+                if (selected != null) {
+                    onMarkerSelected(selected)
+                }
+            }
+        }
+    }
+
     val mapView = remember { 
         MKMapView().apply {
             showsUserLocation = true
         }
+    }
+
+    LaunchedEffect(delegate) {
+        mapView.delegate = delegate
     }
 
     LaunchedEffect(Unit) {

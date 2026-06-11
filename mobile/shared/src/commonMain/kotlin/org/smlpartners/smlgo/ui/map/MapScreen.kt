@@ -162,6 +162,11 @@ private fun ClientMarkerBottomCard(
                         text  = client.name ?: "Sin nombre",
                         style = MaterialTheme.typography.titleMedium
                     )
+                    Text(
+                        text  = "Código: ${client.code ?: "Sin código"}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
                     if (!client.address.isNullOrBlank()) {
                         Spacer(Modifier.height(Spacing.xs))
                         Row(verticalAlignment = Alignment.CenterVertically) {
