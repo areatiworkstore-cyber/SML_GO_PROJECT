@@ -21,6 +21,7 @@ import { getTheme, type ThemeMode } from './theme';
 import { RouteItinerary } from './features/routes/components/RouteItinerary';
 import { ClientForm } from './features/clients/components/ClientForm';
 import { CustomerPortfolio } from './features/clients/components/CustomerPortfolio';
+import { CustomerMap } from './features/clients/components/CustomerMap';
 import { SellerAudit } from './features/audit/components/SellerAudit';
 import { AuthProvider, useAuth, Login } from './features/auth';
 import { NotificationProvider } from './context/NotificationContext';
@@ -71,7 +72,7 @@ class ViewErrorBoundary extends React.Component<
 function AppContent() {
   const { isAuthenticated, user, logout } = useAuth();
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
-  const [activeView, setActiveView] = useState<'agenda' | 'register' | 'portfolio' | 'audit' | 'employees'>('agenda');
+  const [activeView, setActiveView] = useState<'agenda' | 'register' | 'portfolio' | 'audit' | 'employees' | 'map'>('agenda');
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const toggleThemeMode = () => {
@@ -95,6 +96,7 @@ function AppContent() {
   const baseMenuItems = [
     { id: 'agenda', label: 'Agenda de Visitas', icon: '📅' },
     { id: 'portfolio', label: 'Cartera Clientes', icon: '👥' },
+    { id: 'map', label: 'Mapa de Clientes', icon: '🗺️' },
     { id: 'employees', label: 'Empleados', icon: '💼' },
     { id: 'register', label: 'Registrar Cliente', icon: '📝' },
     { id: 'audit', label: 'Auditoría Vendedores', icon: '🛡️' },
@@ -335,6 +337,7 @@ function AppContent() {
             <ViewErrorBoundary>
               {activeView === 'agenda' && <RouteItinerary />}
               {activeView === 'portfolio' && <CustomerPortfolio />}
+              {activeView === 'map' && <CustomerMap />}
               {activeView === 'employees' && <EmployeeList />}
               {activeView === 'register' && <ClientForm />}
               {activeView === 'audit' && <SellerAudit />}

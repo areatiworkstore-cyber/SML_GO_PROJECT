@@ -70,6 +70,8 @@ export interface ClientResponse {
   business_type_id: number;
   client_group_id: number;
   observation: string | null;
+  latitud?: number | null;
+  longitud?: number | null;
 }
 
 export interface BusinessType {
