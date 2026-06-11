@@ -87,18 +87,20 @@ fun ClientFormScreen(
     }
 
     // Pre-rellena si es edición
-    LaunchedEffect(formState.client) {
-        val c = formState.client
-        name                 = c?.name           ?: ""
-        address              = c?.address        ?: ""
-        cellphone            = c?.cellphone      ?: ""
-        telephone            = c?.telephone      ?: ""
-        documentNumber       = c?.documentNumber ?: ""
-        observation          = c?.observation    ?: ""
-        selectedDocumentType = c?.documentType
-        selectedBusinessType = c?.businessType
-        selectedClientGroup  = c?.clientGroup
-        selectedDist         = c?.district
+    LaunchedEffect(formState.isLoading) {
+        if (!formState.isLoading) {
+            val c = formState.client
+            name                 = c?.name           ?: ""
+            address              = c?.address        ?: ""
+            cellphone            = c?.cellphone      ?: ""
+            telephone            = c?.telephone      ?: ""
+            documentNumber       = c?.documentNumber ?: ""
+            observation          = c?.observation    ?: ""
+            selectedDocumentType = c?.documentType
+            selectedBusinessType = c?.businessType
+            selectedClientGroup  = c?.clientGroup
+            selectedDist         = c?.district
+        }
     }
 
     // Resolver geografía en edición si las listas se cargan
