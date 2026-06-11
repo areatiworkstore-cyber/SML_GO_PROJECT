@@ -33,8 +33,8 @@ def create_client(
     if "ADMIN" not in roles or client_in.user_id is None:
         client_in.user_id = current_user.id
 
-    db_client = crud_client.get_client_by_code_and_user(
-        db, code=client_in.code, user_id=client_in.user_id
+    db_client = crud_client.get_client_by_code(
+        db, code=client_in.code
     )
     if db_client:
         raise HTTPException(

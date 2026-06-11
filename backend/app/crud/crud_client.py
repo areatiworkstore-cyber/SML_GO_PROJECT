@@ -8,19 +8,19 @@ def get_client_by_id(db: Session, client_id: int):
 
 def get_next_client_code(db: Session) -> str:
     """
-    Busca el último client.code registrado (por ID desc) y retorna el siguiente.
+    Busca el código numérico máximo registrado en toda la base de datos y retorna el siguiente.
     Si no hay registros, retorna '100000'.
     """
-    last = db.query(Client.code).order_by(Client.id.desc()).first()
-    if last is None:
+    from sqlalchemy.types import Integer as SQLInteger
+    from sqlalchemy import cast
+    
+    max_code = db.query(func.max(cast(Client.code, SQLInteger))).scalar()
+    if max_code is None:
         return '100000'
-    try:
-        return str(int(last[0]) + 1)
-    except (ValueError, TypeError):
-        return '100000'
+    return str(max_code + 1)
 
-def get_client_by_code_and_user(db: Session, code: str, user_id: int):
-    return db.query(Client).filter(Client.code == code, Client.user_id == user_id).first()
+def get_client_by_code(db: Session, code: str):
+    return db.query(Client).filter(Client.code == code).first()
 
 def get_clients(db: Session, skip: int = 0, limit: int = 100, user_id: int = None):
     query = db.query(Client)
