@@ -26,10 +26,7 @@ class AuthApiService(private val manager: HttpClientManager) {
                 append("grant_type", "password")
             }
         )
-        println("[AuthApiService] Enviando login a: ${response.call.request.url}")
-        println("[AuthApiService] Status: ${response.status}")
         val body = response.body<TokenResponseDto>()
-        println("[AuthApiService] Token recibido " + body.accessToken)
         return body
     }
 
