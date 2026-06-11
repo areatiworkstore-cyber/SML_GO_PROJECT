@@ -34,7 +34,6 @@ export interface ClientCreate {
   latitud?: number;
   longitud?: number;
   user_id: number;
-  supplier_id?: number;
   observation?: string;
 }
 
@@ -50,7 +49,6 @@ export interface ClientUpdate {
   latitud?: number;
   longitud?: number;
   user_id?: number;
-  supplier_id?: number;
   observation?: string;
 }
 
@@ -64,7 +62,6 @@ export interface ClientResponse {
   telephone: string | null;
   active: boolean;
   user_id: number;
-  supplier_id: number | null;
   address: string;
   district_id: number;
   business_type_id: number;

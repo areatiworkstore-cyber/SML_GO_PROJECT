@@ -10,23 +10,16 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import CircularProgress from '@mui/material/CircularProgress';
-import InputAdornment from '@mui/material/InputAdornment';
-import IconButton from '@mui/material/IconButton';
 
 import { clientService } from '../services';
 import type { ClientCreate } from '../types';
-import type { SupplierResponse } from '../../suppliers/types';
-import { supplierService } from '../../suppliers/services';
 import { geographicService } from '../../geographic/services';
 import type { DepartmentResponse, ProvinceResponse, DistrictResponse } from '../../geographic/types';
 import { useNotification } from '../../../context/NotificationContext';
 import { useAuth } from '../../auth';
 
-// Importación del nuevo componente desacoplado
-import { QuickSupplierModal } from '../../suppliers/components/QuickSupplierModal';
-
 interface ClientFormProps {
-  initialData?: ClientCreate & { supplier?: { code: string; names: string } };
+  initialData?: ClientCreate;
   clientId?: number;
   onSubmitSuccess?: () => void;
   onCancel?: () => void;
@@ -54,25 +47,14 @@ export const ClientForm: React.FC<ClientFormProps> = ({
       cellphone: '',
       observation: '',
       user_id: user?.id || 0,
-      supplier_id: undefined,
     }
   );
 
-  // Estados de carga e interacción independientes
   const [loadingCode, setLoadingCode] = useState<boolean>(false);
   const [loadingGeo, setLoadingGeo] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // ESTADOS DEL MOTOR DE BÚSQUEDA DE PROVEEDORES
-  const [allSuppliers, setAllSuppliers] = useState<SupplierResponse[]>([]);
-  const [searchSupplierQuery, setSearchSupplierQuery] = useState<string>('');
-  const [selectedSupplier, setSelectedSupplier] = useState<SupplierResponse | null>(null);
-  const [loadingSuppliers, setLoadingSuppliers] = useState<boolean>(false);
-
-  // CONTROL DEL MODAL EXTERNO DE PROVEEDOR
-  const [openSupplierModal, setOpenSupplierModal] = useState<boolean>(false);
-
-  // Carga automática de código incremental (Únicamente en modo Creación)
+  // Autogenerar código sólo en modo creación
   useEffect(() => {
     const fetchNextCode = async () => {
       if (clientId || initialData?.code) return;
@@ -80,42 +62,14 @@ export const ClientForm: React.FC<ClientFormProps> = ({
       try {
         const res = await clientService.getNextClientCode();
         setFormData((prev) => ({ ...prev, code: res.next_code }));
-      } catch (err: any) {
-        showError("No se pudo autogenerar el código de cliente consecutivo.");
+      } catch {
+        showError('No se pudo autogenerar el código de cliente consecutivo.');
       } finally {
         setLoadingCode(false);
       }
     };
-
     fetchNextCode();
   }, [clientId, initialData]);
-
-  // Consumo aislado del servicio de proveedores y sincronización por ID
-  const fetchSuppliersData = async () => {
-    try {
-      setLoadingSuppliers(true);
-      const data = await supplierService.getSuppliers();
-      setAllSuppliers(data);
-
-      if (initialData?.supplier_id && data.length > 0) {
-        const found = data.find((s) => s.id === initialData.supplier_id);
-        if (found) {
-          setSelectedSupplier(found);
-          setSearchSupplierQuery(found.code);
-        }
-      }
-      return data;
-    } catch (err: any) {
-      console.error("Error al recuperar proveedores:", err);
-      return [];
-    } finally {
-      setLoadingSuppliers(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSuppliersData();
-  }, [initialData]);
 
   useEffect(() => {
     if (user?.id && !initialData) {
@@ -159,53 +113,11 @@ export const ClientForm: React.FC<ClientFormProps> = ({
         setLoadingGeo(false);
       }
     };
-
     fetchGeoData();
   }, [initialData]);
 
   const filteredProvinces = provinces.filter((p) => p.department_id === Number(selectedDeptId));
   const filteredDistricts = districts.filter((d) => d.province_id === Number(selectedProvId));
-
-  // Motor de Match del Proveedor
-  const handleSearchSupplier = () => {
-    if (!searchSupplierQuery.trim()) {
-      showError('Ingrese un código de proveedor para buscar.');
-      return;
-    }
-
-    const cleanQuery = searchSupplierQuery.trim().toLowerCase();
-    const found = allSuppliers.find((s) => s.code.toLowerCase() === cleanQuery);
-
-    if (found) {
-      setSelectedSupplier(found);
-      setFormData((prev) => ({ ...prev, supplier_id: found.id }));
-      showSuccess(`Proveedor [${found.code}] asignado correctamente.`);
-    } else {
-      setSelectedSupplier(null);
-      setFormData((prev) => ({ ...prev, supplier_id: null }));
-      setOpenSupplierModal(true); // <-- Abre el modal express importado
-      showError('Proveedor no encontrado. Puede crearlo ahora mismo en la ventana emergente.');
-    }
-  };
-
-  const handleClearSupplier = () => {
-    setSelectedSupplier(null);
-    setSearchSupplierQuery('');
-    setFormData((prev) => ({ ...prev, supplier_id: null }));
-  };
-
-  // Callback exitoso del Modal de Proveedores
-  const handleSupplierCreatedSuccess = async (created: SupplierResponse) => {
-    setOpenSupplierModal(false);
-
-    // Refrescar lista local en segundo plano
-    const updatedList = await fetchSuppliersData();
-
-    // Vincular inmediatamente al formulario
-    const foundInNewList = updatedList.find(s => s.id === created.id) || created;
-    setSelectedSupplier(foundInNewList);
-    setFormData((prev) => ({ ...prev, supplier_id: foundInNewList.id }));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,12 +153,9 @@ export const ClientForm: React.FC<ClientFormProps> = ({
         cellphone: '',
         observation: '',
         user_id: user?.id || 0,
-        supplier_id: null,
       });
       setSelectedDeptId('');
       setSelectedProvId('');
-      setSelectedSupplier(null);
-      setSearchSupplierQuery('');
 
       if (onSubmitSuccess) onSubmitSuccess();
     } catch (err: any) {
@@ -463,68 +372,6 @@ export const ClientForm: React.FC<ClientFormProps> = ({
               />
             </Grid>
 
-            {/* CAMPO DE BÚSQUEDA CON LUPA */}
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                fullWidth
-                label="Buscar Proveedor (Código)"
-                variant="outlined"
-                value={searchSupplierQuery}
-                onChange={(e) => setSearchSupplierQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleSearchSupplier();
-                  }
-                }}
-                disabled={loadingSuppliers || submitting}
-                slotProps={{
-                  input: {
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        {selectedSupplier ? (
-                          <IconButton onClick={handleClearSupplier} edge="end" color="error">
-                            ❌
-                          </IconButton>
-                        ) : (
-                          <IconButton
-                            onClick={handleSearchSupplier}
-                            edge="end"
-                            disabled={loadingSuppliers || submitting}
-                          >
-                            {loadingSuppliers ? <CircularProgress size={20} /> : '🔍'}
-                          </IconButton>
-                        )}
-                      </InputAdornment>
-                    ),
-                  }
-                }}
-              />
-
-              {selectedSupplier && (
-                <Box
-                  sx={{
-                    mt: 1.5,
-                    p: 2,
-                    borderRadius: 2,
-                    bgcolor: 'rgba(242, 146, 0, 0.05)',
-                    border: '1px solid',
-                    borderColor: 'primary.main'
-                  }}
-                >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                    Proveedor Seleccionado:
-                  </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 'bold', mt: 0.5 }}>
-                    {selectedSupplier.names}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Código Interno: <strong>{selectedSupplier.code}</strong>
-                  </Typography>
-                </Box>
-              )}
-            </Grid>
-
             {/* Observaciones */}
             <Grid size={{ xs: 12 }}>
               <TextField
@@ -571,14 +418,6 @@ export const ClientForm: React.FC<ClientFormProps> = ({
           </Box>
         </Box>
       </Paper>
-
-      {/* Renderizado Condicional del Modal Externo */}
-      <QuickSupplierModal
-        open={openSupplierModal}
-        supplierCode={searchSupplierQuery}
-        onClose={() => setOpenSupplierModal(false)}
-        onSuccess={handleSupplierCreatedSuccess}
-      />
     </Box>
   );
 };
