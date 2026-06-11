@@ -19,7 +19,7 @@ def read_next_client_code(db: Session = Depends(get_db)):
     next_code = crud_client.get_next_client_code(db)
     return {"next_code": next_code}
 
-@router.post("/", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)
 def create_client(
     *,
     db: Session = Depends(get_db),
@@ -44,7 +44,7 @@ def create_client(
     return crud_client.create_client(db, client_in=client_in)
 
 
-@router.get("/", response_model=List[ClientResponse])
+@router.get("", response_model=List[ClientResponse])
 def read_clients(
     db: Session = Depends(get_db),
     user_id: Optional[int] = None,
