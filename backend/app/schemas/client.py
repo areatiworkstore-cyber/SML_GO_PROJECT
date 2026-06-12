@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
+from app.schemas.geographic import DistrictResponse, ProvinceResponse, DepartmentResponse
 
 # --- SCHEMA DE CLIENTE ---
 class ClientBase(BaseModel):
@@ -10,6 +11,9 @@ class ClientBase(BaseModel):
     document_number: Optional[str] = None
     address: Optional[str] = None
     district_id: Optional[int] = None
+    district: Optional[DistrictResponse] = None
+    province: Optional[ProvinceResponse] = None
+    department: Optional[DepartmentResponse] = None
     business_type_id: Optional[int] = None
     client_group_id: Optional[int] = None
     cellphone: Optional[str] = None
@@ -22,19 +26,8 @@ class ClientBase(BaseModel):
 class ClientCreate(ClientBase):
     user_id: Optional[int] = None  # The seller this client belongs to
 
-class ClientUpdate(BaseModel):
-    name: Optional[str] = None
-    address: Optional[str] = None
-    district_id: Optional[int] = None
-    business_type_id: Optional[int] = None
-    client_group_id: Optional[int] = None
-    cellphone: Optional[str] = None
-    telephone: Optional[str] = None
-    active: Optional[bool] = None
-    latitud: Optional[float] = None
-    longitud: Optional[float] = None
+class ClientUpdate(ClientBase):
     user_id: Optional[int] = None
-    observation: Optional[str] = None
 
 class ClientNextCodeResponse(BaseModel):
     next_code: str

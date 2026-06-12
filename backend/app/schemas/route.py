@@ -10,6 +10,7 @@ class WaypointBase(BaseModel):
     order_sequence: int
     client_id: int
     status: Optional[str] = "PENDIENTE"  # PENDIENTE, VISITA, CANCELADA
+    url_photo: Optional[str] = None
     comment: Optional[str] = None
 
 class WaypointCreate(WaypointBase):
@@ -18,6 +19,7 @@ class WaypointCreate(WaypointBase):
 class WaypointUpdate(BaseModel):
     status: Optional[str] = None  # VISITA, CANCELADA
     visited_at: Optional[datetime] = None
+    url_photo: Optional[str] = None
     comment: Optional[str] = None
     order_sequence: Optional[int] = None
     address: Optional[str] = None
@@ -35,6 +37,7 @@ class WaypointResponse(WaypointBase):
     id: int
     route_id: int
     visited_at: Optional[datetime] = None
+    url_photo: Optional[str] = None
     client: Optional[WaypointClientInfo] = None
 
     class Config:

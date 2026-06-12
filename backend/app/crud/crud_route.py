@@ -59,6 +59,7 @@ def create_waypoint(db: Session, route_id: int, wp_in: WaypointCreate) -> Waypoi
         order_sequence=wp_in.order_sequence,
         client_id=wp_in.client_id,
         status=wp_in.status,
+        url_photo=wp_in.url_photo,
         comment=wp_in.comment
     )
     db.add(db_wp)

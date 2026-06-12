@@ -127,3 +127,56 @@ def create_waypoint_for_route(
         raise HTTPException(status_code=403, detail="Not enough permissions")
         
     return crud_route.create_waypoint(db, route_id=route_id, wp_in=wp_in)
+
+
+import uuid
+import os
+import shutil
+from fastapi import UploadFile, File
+
+@router.post("/waypoints/{waypoint_id}/upload-photo", response_model=WaypointResponse)
+def upload_waypoint_photo(
+    waypoint_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Sube una foto de evidencia para un waypoint específico y almacena la ruta en `url_photo`.
+    """
+    waypoint = crud_route.get_waypoint_by_id(db, waypoint_id=waypoint_id)
+    if not waypoint:
+        raise HTTPException(status_code=404, detail="Waypoint no encontrado")
+        
+    route = crud_route.get_route_by_id(db, route_id=waypoint.route_id)
+    roles = [ru.role_details.role for ru in current_user.roles]
+    if "ADMIN" not in roles and route.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tienes permisos para realizar esta acción")
+
+    # Validar extensión de imagen
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in [".jpg", ".jpeg", ".png", ".webp"]:
+        raise HTTPException(status_code=400, detail="Formato de archivo no soportado. Solo se permiten imágenes.")
+
+    # Asegurar directorio de subidas
+    upload_dir = "static/uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+
+    # Nombre único
+    filename = f"wp_{waypoint_id}_{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(upload_dir, filename)
+
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo guardar el archivo: {str(e)}")
+
+    # Guardar url relativa
+    url_photo = f"/static/uploads/{filename}"
+    waypoint.url_photo = url_photo
+    db.add(waypoint)
+    db.commit()
+    db.refresh(waypoint)
+
+    return waypoint

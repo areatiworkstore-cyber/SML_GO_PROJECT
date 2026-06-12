@@ -30,6 +30,7 @@ class Waypoint(Base):
     client_id = Column(Integer, ForeignKey("client.id"), nullable=False)
     status = Column(String(10), default="PENDIENTE", nullable=False)  # PENDIENTE, VISITA, CANCELADA
     visited_at = Column(DateTime, nullable=True)
+    url_photo = Column(Text, nullable=True)
     comment = Column(Text, nullable=True)
 
     route = relationship("Route", back_populates="waypoints")
