@@ -143,6 +143,22 @@ def delete_client(
     crud_client.delete_client(db, client_id=client_id)
     return None
 
+@router.put("/{client_id}/activate")
+def activate_client(
+    client_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Activa un cliente eliminado/inactivo"""
+    client = crud_client.get_client_by_id(db, client_id=client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    
+    roles = [ru.role_details.role for ru in current_user.roles]
+    if "ADMIN" not in roles and client.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tienes permisos para realizar esta acción")
+
+    return crud_client.activate_client(db, client_id=client_id)
 
 @router.post("/import", status_code=status.HTTP_200_OK)
 async def import_clients_from_excel(

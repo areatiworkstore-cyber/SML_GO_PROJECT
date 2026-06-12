@@ -68,3 +68,12 @@ def delete_client(db: Session, client_id: int):
         db.commit()
         db.refresh(db_client)
     return db_client
+
+def activate_client(db: Session, client_id: int):
+    db_client = get_client_by_id(db, client_id)
+    if db_client:
+        db_client.active = True
+        db.add(db_client)
+        db.commit()
+        db.refresh(db_client)
+    return db_client
