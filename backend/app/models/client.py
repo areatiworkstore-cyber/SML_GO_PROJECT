@@ -38,3 +38,18 @@ class Client(Base):
     __table_args__ = (
         UniqueConstraint('code', name='uq_client_code'),
     )
+
+    # ---- PROPIEDADES CALCULADAS AL FINAL DE LA CLASE ----
+    @property
+    def province(self):
+        if self.district and hasattr(self.district, 'province') and self.district.province:
+            return self.district.province
+        return None
+
+    @property
+    def department(self):
+        if (self.district and 
+                hasattr(self.district, 'province') and self.district.province and 
+                hasattr(self.district.province, 'department') and self.district.province.department):
+            return self.district.province.department
+        return None
