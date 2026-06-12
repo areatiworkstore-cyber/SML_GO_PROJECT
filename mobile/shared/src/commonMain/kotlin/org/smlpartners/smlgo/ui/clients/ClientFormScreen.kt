@@ -90,6 +90,8 @@ fun ClientFormScreen(
     LaunchedEffect(formState.isLoading) {
         if (!formState.isLoading) {
             val c = formState.client
+            println("[ClientForm] Pre-llenando formulario. client=${c?.name} district=${c?.district?.id}")
+
             name                 = c?.name           ?: ""
             address              = c?.address        ?: ""
             cellphone            = c?.cellphone      ?: ""
@@ -99,7 +101,18 @@ fun ClientFormScreen(
             selectedDocumentType = c?.documentType
             selectedBusinessType = c?.businessType
             selectedClientGroup  = c?.clientGroup
-            selectedDist         = c?.district
+
+            // ← Ubigeo pre-seleccionado desde el cliente
+            selectedDept = c?.department
+                ?: formState.departments.firstOrNull { dept ->
+                    dept.id == c?.province?.departmentId
+                }
+            selectedProv = c?.province
+                ?: formState.provinces.firstOrNull { it.id == c?.district?.provinceId }
+            selectedDist = formState.districts.firstOrNull { it.id == c?.district?.id }
+                ?: c?.district
+
+            println("[ClientForm] Ubigeo: dept=${selectedDept?.name} prov=${selectedProv?.name} dist=${selectedDist?.name}")
         }
     }
 

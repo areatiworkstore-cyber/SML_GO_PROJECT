@@ -9,6 +9,8 @@ data class Client(
     val documentNumber : String? = null,
     val address        : String? = null,
     val district       : District? = null,
+    val province       : Province?   = null,
+    val department     : Department? = null,
     val businessType   : BusinessType? = null,
     val clientGroup    : ClientGroup? = null,
     val cellphone      : String? = null,

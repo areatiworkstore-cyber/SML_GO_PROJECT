@@ -30,18 +30,18 @@ fun DistrictDto.toDomain()   = District(id = id, name = name, active = active, p
 // ── User ─────────────────────────────────────────────────────────────────
 
 fun UserDto.toDomain() = User(
-    id             = id,
-    code           = code,
-    firstName      = firstName ?: "User",
-    secondName     = secondName ?: "",
-    firstSurname   = firstSurname ?: "SML",
-    secondSurname  = secondSurname ?: "",
-    documentType   = documentType?.toDomain(),
+    id = id,
+    code = code,
+    firstName = firstName ?: "User",
+    secondName = secondName ?: "",
+    firstSurname = firstSurname ?: "SML",
+    secondSurname = secondSurname ?: "",
+    documentType = documentType?.toDomain(),
     documentNumber = documentNumber,
-    cellphone      = cellphone,
-    email          = email,
-    roles          = roles.map { it.toDomain() },
-    active         = true
+    cellphone = cellphone,
+    email = email,
+    roles = roles.map { it.toDomain() },
+    active = true
 )
 
 fun User.toUpdateDto(password: String? = null) = UserUpdateDto(
@@ -59,18 +59,18 @@ fun User.toUpdateDto(password: String? = null) = UserUpdateDto(
 )
 
 fun MyProfileDto.toDomainUser() = User(
-    id             = id,
-    code           = code,
-    firstName      = firstName,
-    secondName     = secondName,
-    firstSurname   = firstSurname,
-    secondSurname  = secondSurname,
-    documentType   = documentType?.toDomain(),
-    documentNumber = documentNumber,
-    cellphone      = cellphone,
-    email          = email,
-    roles          = roles.map { it.toDomain() },
-    active         = true
+    id = id,
+    code = code,
+    firstName = firstName ?: "User",
+    secondName = secondName ?: "",
+    firstSurname = firstSurname ?: "SML",
+    secondSurname = secondSurname ?: "",
+    documentType = documentType?.toDomain(),
+    documentNumber = documentNumber ?: "",
+    cellphone = cellphone ?: "",
+    email = email ?: "",
+    roles = roles.map { it.toDomain() },
+    active = true
 )
 
 // ── Client DTO → Domain Model ─────────────────────────────────────────────
@@ -82,7 +82,19 @@ fun ClientDto.toDomain() = Client(
     documentType   = documentTypeId?.let { DocumentType(id = it, description = "") },
     documentNumber = documentNumber,
     address        = address,
-    district       = districtId?.let { District(id = it, name = "", active = true, provinceId = 0) },
+    // ← usa el objeto anidado si existe, fallback al ID plano
+    district       = district?.let {
+        District(id = it.id, name = it.name, active = it.active, provinceId = it.provinceId)
+    } ?: districtId?.let {
+        District(id = it, name = "", active = true, provinceId = 0)
+    },
+    // ← provincia y departamento también disponibles
+    province       = province?.let {
+        Province(id = it.id, name = it.name, active = it.active, departmentId = it.departmentId)
+    },
+    department     = department?.let {
+        Department(id = it.id, name = it.name, active = it.active)
+    },
     businessType   = businessTypeId?.let { BusinessType(id = it, description = "") },
     clientGroup    = clientGroupId?.let { ClientGroup(id = it, description = "") },
     cellphone      = cellphone,
@@ -127,6 +139,7 @@ fun WaypointDto.toDomain() = Waypoint(
     clientName    = client.name,
     status        = WaypointStatus.from(status),
     visitedAt     = visitedAt?.toLocalDateTime(),
+    urlPhoto      = urlPhoto,
     comment       = comment
 )
 
@@ -137,6 +150,7 @@ fun Waypoint.toCreateDto() = WaypointCreateDto(
     orderSequence = orderSequence,
     clientId      = clientId,
     status        = status.name,
+    urlPhoto      = urlPhoto,
     comment       = comment
 )
 

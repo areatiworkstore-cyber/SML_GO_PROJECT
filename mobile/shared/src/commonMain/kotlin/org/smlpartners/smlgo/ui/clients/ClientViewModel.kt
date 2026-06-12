@@ -77,15 +77,11 @@ class ClientViewModel(
         viewModelScope.launch {
             _formState.update { ClientFormUiState(isLoading = true) }
 
-            // Carga catálogos y cliente en paralelo
-            val masterDataResult = getClientFormMasterData()
+            println("[ClientVM] loadFormData clientId=$clientId")
 
-            // Si es nuevo cliente → llama a next-code
-            // Si es edición → usa el code del cliente
-            val codeResult       = if (clientId == null) getNextClientCodeUseCase() else null
-
-            val clientResult     = clientId?.let { getClientByIdUseCase(it) }
-
+            val masterDataResult  = getClientFormMasterData()
+            val codeResult        = if (clientId == null) getNextClientCodeUseCase() else null
+            val clientResult      = clientId?.let { getClientByIdUseCase(it) }
             val departmentsResult = getDepartmentsUseCase()
 
             if (masterDataResult is ApiResult.Error) {
@@ -93,13 +89,11 @@ class ClientViewModel(
                 _formState.update { it.copy(isLoading = false) }
                 return@launch
             }
-
             if (codeResult is ApiResult.Error) {
                 GlobalErrorHandler.emit(codeResult.exception)
                 _formState.update { it.copy(isLoading = false) }
                 return@launch
             }
-
             if (departmentsResult is ApiResult.Error) {
                 GlobalErrorHandler.emit(departmentsResult.exception)
                 _formState.update { it.copy(isLoading = false) }
@@ -111,35 +105,8 @@ class ClientViewModel(
             val rawClient  = (clientResult as? ApiResult.Success)?.data
             val depts      = (departmentsResult as ApiResult.Success).data
 
-            var resolvedProvinces = emptyList<Province>()
-            var resolvedDistricts = emptyList<District>()
+            println("[ClientVM] rawClient district=${rawClient?.district?.id} province=${rawClient?.province?.id} department=${rawClient?.department?.id}")
 
-            // Si el cliente tiene un distrito, resolvemos la provincia y departamento para poblar los dropdowns
-            val clientDistrict = rawClient?.district
-            if (clientDistrict != null) {
-                // Buscamos la provincia del distrito
-                val provinceId = clientDistrict.provinceId
-                // Cargamos provincias del departamento de esa provincia
-                // Nota: para simplificar cargamos provincias y distritos asociados
-                val provResult = getProvincesUseCase(clientDistrict.provinceId) // Cargamos la provincia específica o cargamos todas las del departamento
-                // En la BD, province tiene departmentId. Necesitamos obtener la provincia del cliente
-                // Para no hacer llamadas anidadas complejas si el objeto no tiene toda la estructura,
-                // podemos consultar provinces del departmentId si lo conocemos.
-                // Como District tiene provinceId, cargamos los distritos de la provincia
-                when (val dists = getDistrictsUseCase(provinceId)) {
-                    is ApiResult.Success -> resolvedDistricts = dists.data
-                    else -> {}
-                }
-                // Si pudimos obtener la lista de provincias para el departamento del cliente
-                // (Para esto necesitamos saber el departmentId. En clientDistrict.province?.departmentId)
-                // Pero como a veces el mapper no anida completamente, podemos intentar obtener la provincia primero
-                // Sin embargo, para simplificar, si es edición, podemos cargar las provincias asociadas a la provincia del distrito
-                // Si la provincia del distrito tiene departmentId, cargamos provincias de ese departmentId
-                // Hagamos una consulta de provincias por el id de la provincia del distrito del cliente para saber su departamento
-                // Como la app móvil tiene getProvincesUseCase(departmentId), cargamos todas las provincias si es necesario o podemos cargarlas bajo demanda.
-            }
-
-            // Resuelve los objetos completos cruzando IDs con catálogos
             val resolvedClient = rawClient?.copy(
                 documentType = masterData.documentTypes
                     .firstOrNull { it.id == rawClient.documentType?.id },
@@ -149,24 +116,53 @@ class ClientViewModel(
                     .firstOrNull { it.id == rawClient.clientGroup?.id }
             )
 
+            // ── Carga cascada ubigeo si el cliente tiene distrito ─────────
+            var provinces  = emptyList<Province>()
+            var districts  = emptyList<District>()
+
+            val clientDistrict   = resolvedClient?.district
+            val clientProvince   = resolvedClient?.province
+            val clientDepartment = resolvedClient?.department
+
+            if (clientDistrict != null && clientProvince != null) {
+                println("[ClientVM] Cargando ubigeo: dept=${clientDepartment?.id} prov=${clientProvince.id} dist=${clientDistrict.id}")
+
+                // Carga provincias del departamento
+                if (clientDepartment != null) {
+                    when (val provResult = getProvincesUseCase(clientDepartment.id)) {
+                        is ApiResult.Success -> {
+                            provinces = provResult.data
+                            println("[ClientVM] Provincias cargadas: ${provinces.size}")
+                        }
+                        is ApiResult.Error -> println("[ClientVM] Error cargando provincias: ${provResult.exception.message}")
+                    }
+                }
+
+                // Carga distritos de la provincia
+                when (val distResult = getDistrictsUseCase(clientProvince.id)) {
+                    is ApiResult.Success -> {
+                        districts = distResult.data
+                        println("[ClientVM] Distritos cargados: ${districts.size}")
+                    }
+                    is ApiResult.Error -> println("[ClientVM] Error cargando distritos: ${distResult.exception.message}")
+                }
+            }
+
             _formState.update {
                 it.copy(
                     isLoading     = false,
                     client        = resolvedClient,
-                    clientCode    = resolvedClient?.code?.let { NextCode(it) } ?: nextCode,
+                    clientCode    = resolvedClient?.code?.let { c -> NextCode(c) } ?: nextCode,
                     documentTypes = masterData.documentTypes,
                     businessTypes = masterData.businessTypes,
                     clientGroups  = masterData.clientGroups,
-                    departments    = depts,
-                    provinces      = resolvedProvinces,
-                    districts      = resolvedDistricts
+                    departments   = depts,
+                    provinces     = provinces,
+                    districts     = districts
                 )
             }
 
-            // Cargar de forma asíncrona provincias y distritos si existe distrito
-            if (clientDistrict != null) {
-                loadProvincesAndDistrictsForEdit(clientDistrict)
-            }
+            println("[ClientVM] formState actualizado: provinces=${provinces.size} districts=${districts.size}")
         }
     }
 
@@ -230,24 +226,31 @@ class ClientViewModel(
     }
 
     fun saveClient(client: Client) {
+        println("[ClientVM] saveClient id=${client.id} name=${client.name}")
+        println("[ClientVM] district=${client.district?.id} district_name=${client.district?.name}")
+        println("[ClientVM] lat=${client.latitude} lng=${client.longitude}")
+        println("[ClientVM] active=${client.active}")
+
         viewModelScope.launch {
             _formState.update { it.copy(isLoading = true, error = null) }
             val result = if (client.id == 0) {
+                println("[ClientVM] Creando nuevo cliente")
                 createClientUseCase(client)
             } else {
+                println("[ClientVM] Actualizando cliente id=${client.id}")
                 updateClientUseCase(client.id, client)
             }
             when (result) {
-                is ApiResult.Success -> _formState.update {
-                    it.copy(isLoading = false, isSaved = true, client = result.data)
+                is ApiResult.Success -> {
+                    println("[ClientVM] Cliente guardado id=${result.data.id}")
+                    _formState.update { it.copy(isLoading = false, isSaved = true, client = result.data) }
                 }
                 is ApiResult.Error -> {
+                    println("[ClientVM] Error al guardar: ${result.exception.message}")
                     when (val appError = result.exception.toAppError()) {
-                        // Validación → error local en formulario
                         is AppError.ValidationError -> _formState.update {
                             it.copy(isLoading = false, error = appError.toUserMessage())
                         }
-                        // Todo lo demás → global
                         else -> {
                             GlobalErrorHandler.emit(appError)
                             _formState.update { it.copy(isLoading = false) }
