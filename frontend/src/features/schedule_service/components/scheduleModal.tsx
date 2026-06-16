@@ -106,11 +106,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({ open, onClose, ini
             return;
         }
 
-        if (!observation.trim()) {
-            showError('Por favor, ingrese una observación.');
-            return;
-        }
-
         try {
             setSubmitting(true);
 
@@ -241,7 +236,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({ open, onClose, ini
                                     value={observation}
                                     onChange={(e) => setObservation(e.target.value)}
                                     disabled={submitting}
-                                    required
                                     variant="outlined"
                                 />
 

@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState<boolean>(true);
 
     // Función para obtener los datos actualizados del endpoint /users/me
-    const fetchUserData = async (currentToken: string, role: string) => {
+    const fetchUserData = async (role: string) => {
         try {
             const data = await apiClient.get<{
                 id: number;
@@ -76,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(false);
         } else if (token && savedRoles) {
             const roles = JSON.parse(savedRoles);
-            fetchUserData(token, roles[0] || 'USER');
+            fetchUserData(roles[0] || 'USER');
         } else {
             setLoading(false);
         }
@@ -91,7 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('user_roles', JSON.stringify([role]));
         setToken(newToken);
         setLoading(true);
-        await fetchUserData(newToken, role);
+        await fetchUserData(role);
     };
 
     const logout = () => {
