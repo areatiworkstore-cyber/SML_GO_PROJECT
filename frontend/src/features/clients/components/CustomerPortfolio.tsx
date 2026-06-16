@@ -177,8 +177,11 @@ export const CustomerPortfolio: React.FC = () => {
       setLoading(true);
       const data: Employee[] = await employeeService.getEmployees(0, 100);
 
+      // Filter out inactive employees
+      const activeEmployees = (data || []).filter((emp: any) => emp.active !== false);
+
       // Transformamos el tipo Employee al formato exacto de AdvisorData
-      const formattedAdvisors: AdvisorData[] = (data || []).map((emp: any) => {
+      const formattedAdvisors: AdvisorData[] = activeEmployees.map((emp: any) => {
         // Determinamos el rol real basándonos en su código de empleado (SML001 es ADMIN en tu DB)
         // o si el backend llega a mandar alguna propiedad identificadora.
         const userCode = emp.code || '';

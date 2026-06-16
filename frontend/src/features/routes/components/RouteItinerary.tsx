@@ -12,6 +12,7 @@ import Divider from '@mui/material/Divider';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Grid from '@mui/material/Grid';
+import TextField from '@mui/material/TextField';
 
 import { useNotification } from '../../../context/NotificationContext';
 import { MapButton } from '../../../components/MapButton';
@@ -24,6 +25,10 @@ import { clientService } from '../../clients';
 import { masterDataService } from '../../../services/masterDataService';
 import { geographicService } from '../../geographic/services';
 import type { DepartmentResponse, ProvinceResponse, DistrictResponse } from '../../geographic/types';
+import { routeService } from '../services';
+import type { Route } from '../types';
+import { useAuth } from '../../auth';
+
 
 // Helper para calcular las fechas reales de la semana actual (Lunes a Sábado) dinámicamente
 const getWeekDates = () => {
@@ -49,12 +54,27 @@ const getWeekDates = () => {
   return mapping;
 };
 
+const getBaseUrl = () => {
+  const baseEnvUrl = import.meta.env.VITE_API_URL || '';
+  if (baseEnvUrl.startsWith('http://') || baseEnvUrl.startsWith('https://')) {
+    try {
+      const url = new URL(baseEnvUrl);
+      return url.origin;
+    } catch {
+      return '';
+    }
+  }
+  return '';
+};
+
 export const RouteItinerary: React.FC = () => {
   const { showConfirm, showSuccess, showError } = useNotification();
+  const { user } = useAuth();
 
   // Estados de control de datos
   const [schedules, setSchedules] = useState<ClientScheduleResponse[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   // Estados para Almacenar Datos Maestros de Relaciones
   const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
@@ -62,6 +82,9 @@ export const RouteItinerary: React.FC = () => {
   const [districts, setDistricts] = useState<DistrictResponse[]>([]);
   const [businessTypes, setBusinessTypes] = useState<BusinessType[]>([]);
   const [clientGroups, setClientGroups] = useState<ClientGroup[]>([]);
+
+  // Vista activa: agenda programada o rutas/paradas asignadas
+  const [viewMode, setViewMode] = useState<'agenda' | 'routes'>('agenda');
 
   // 🚀 Estado de apertura para el Modal de asignación
   const [openModal, setOpenModal] = useState<boolean>(false);
@@ -83,7 +106,6 @@ export const RouteItinerary: React.FC = () => {
   // 📝 ESTADO DE LA PARADA SELECCIONADA PARA EL PANEL DERECHO
   const [selectedScheduleId, setSelectedScheduleId] = useState<number | null>(null);
 
-  // Carga de datos inicial corregida para poblar el estado de clientes
   // Carga de datos inicial corregida para poblar el estado de clientes y maestros
   const loadData = async () => {
     try {
@@ -93,14 +115,16 @@ export const RouteItinerary: React.FC = () => {
       const [
         schedulesData,
         clientsData,
+        routesData,
         departmentsData,
         provincesData,
         districtsData,
         businessTypesData,
         clientGroupsData
       ] = await Promise.all([
-        scheduleService.getSchedules(),
-        clientService.getClients(),
+        scheduleService.getSchedules({ user_id: user?.id }),
+        clientService.getClients(user?.id),
+        routeService.getRoutes(user?.id),
         // 🔄 Inyecciones de llamadas concurrentes a tus servicios del backend
         geographicService.getDepartments ? geographicService.getDepartments() : Promise.resolve([]),
         geographicService.getProvinces ? geographicService.getProvinces() : Promise.resolve([]),
@@ -111,6 +135,7 @@ export const RouteItinerary: React.FC = () => {
 
       setSchedules(schedulesData);
       setClients(clientsData);
+      setRoutes(routesData);
       setDepartments(departmentsData);
       setProvinces(provincesData);
       setDistricts(districtsData);
@@ -124,13 +149,18 @@ export const RouteItinerary: React.FC = () => {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user?.id) {
+      loadData();
+    }
+  }, [user?.id]);
 
   // Filtrar y ordenar las programaciones del día seleccionado (fecha ISO dinámica)
   const sortedSchedules = [...schedules]
     .filter(s => s.active && s.day === targetDateStr)
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+  // Filtrar rutas del día seleccionado
+  const dailyRoutes = routes.filter(r => r.scheduled_date === targetDateStr && r.active);
 
   // 🔄 EFECTO: Selecciona automáticamente la primera parada al cambiar de día
   useEffect(() => {
@@ -215,20 +245,47 @@ export const RouteItinerary: React.FC = () => {
       {/* HEADER DE LA SECCIÓN */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <div>
-          <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'text.primary', display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            Itinerario del {activeTab.toLowerCase()} ({targetDateStr.split('-').reverse().join('/')})
-            <Chip
-              label={`${sortedSchedules.length} visitas`}
-              size="small"
-              sx={{ bgcolor: 'rgba(242, 146, 0, 0.1)', color: 'primary.main', fontWeight: 'bold' }}
-            />
+          <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'text.primary', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+            Itinerario {activeTab ? `del ${activeTab.toLowerCase()}` : ''} ({targetDateStr.split('-').reverse().join('/')})
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Chip
+                label={`${sortedSchedules.length} visitas`}
+                size="small"
+                sx={{ bgcolor: 'rgba(242, 146, 0, 0.1)', color: 'primary.main', fontWeight: 'bold' }}
+              />
+              <Chip
+                label={`${dailyRoutes.length} rutas`}
+                size="small"
+                sx={{ bgcolor: 'rgba(74, 144, 226, 0.1)', color: '#4a90e2', fontWeight: 'bold' }}
+              />
+            </Box>
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-            Mapeo de visitas comerciales configurado para la fecha indicada.
+            Mapeo de visitas comerciales y rutas asignadas para la fecha indicada.
           </Typography>
         </div>
 
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+          <TextField
+            label="Consultar Fecha"
+            type="date"
+            value={targetDateStr}
+            onChange={(e) => {
+              const selectedDate = e.target.value;
+              setTargetDateStr(selectedDate);
+              const matchDay = Object.keys(weekDatesMapping).find(day => weekDatesMapping[day] === selectedDate);
+              if (matchDay) {
+                setActiveTab(matchDay);
+              } else {
+                setActiveTab('');
+              }
+            }}
+            slotProps={{
+              inputLabel: { shrink: true }
+            }}
+            size="small"
+            sx={{ width: 170 }}
+          />
           <Button
             variant="outlined"
             color="primary"
@@ -249,9 +306,9 @@ export const RouteItinerary: React.FC = () => {
       </Box>
 
       {/* 🗓️ BARRA DE NAVEGACIÓN POR DÍAS (SÓLO LUNES A SÁBADO) */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 4 }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs
-          value={activeTab}
+          value={activeTab || false}
           onChange={handleTabChange}
           variant="scrollable"
           scrollButtons="auto"
@@ -269,6 +326,19 @@ export const RouteItinerary: React.FC = () => {
         </Tabs>
       </Box>
 
+      {/* TABS INTERNAS PARA SELECCIÓN DE MODO DE VISTA */}
+      <Box sx={{ mb: 4 }}>
+        <Tabs
+          value={viewMode}
+          onChange={(_, val) => setViewMode(val)}
+          indicatorColor="primary"
+          textColor="primary"
+        >
+          <Tab label="Agenda Programada" value="agenda" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
+          <Tab label="Rutas y Paradas Asignadas" value="routes" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
+        </Tabs>
+      </Box>
+
       {loading && schedules.length === 0 ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress color="primary" />
@@ -276,133 +346,234 @@ export const RouteItinerary: React.FC = () => {
       ) : (
         <Grid container spacing={3}>
 
-          {/* 🕒 TIMELINE AUTOMÁTICO (PANEL IZQUIERDO) */}
+          {/* PANEL IZQUIERDO */}
           <Grid size={{ xs: 12, md: 7 }}>
-            <Box sx={{
-              position: 'relative',
-              pl: { xs: 2, sm: 4 },
-              borderLeft: '2px solid',
-              borderColor: 'divider',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 3,
-              py: 1
-            }}>
-              {sortedSchedules.length > 0 ? (
-                sortedSchedules.map((schedule, index) => {
-                  const clientInfo = clients.find((c) => c.id === schedule.client_id);
-                  const formattedHour = schedule.start_time.substring(0, 5);
-                  const isSelected = selectedScheduleId === schedule.id;
+            {viewMode === 'agenda' ? (
+              <Box sx={{
+                position: 'relative',
+                pl: { xs: 2, sm: 4 },
+                borderLeft: '2px solid',
+                borderColor: 'divider',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 3,
+                py: 1
+              }}>
+                {sortedSchedules.length > 0 ? (
+                  sortedSchedules.map((schedule, index) => {
+                    const clientInfo = clients.find((c) => c.id === schedule.client_id);
+                    const formattedHour = schedule.start_time.substring(0, 5);
+                    const isSelected = selectedScheduleId === schedule.id;
 
-                  return (
-                    <Box
-                      key={schedule.id}
-                      sx={{
-                        position: 'relative',
-                        display: 'flex',
-                        flexDirection: { xs: 'column', sm: 'row' },
-                        alignItems: { xs: 'flex-start', sm: 'center' },
-                        gap: 2
-                      }}
-                    >
-                      <Box sx={{
-                        position: 'absolute',
-                        left: { xs: '-25px', sm: '-41px' },
-                        top: { xs: '8px', sm: '50%' },
-                        transform: 'translateY(-50%)',
-                        width: 16,
-                        height: 16,
-                        borderRadius: '50%',
-                        bgcolor: isSelected ? 'primary.main' : 'action.disabled',
-                        border: '4px solid',
-                        borderColor: 'background.paper',
-                        boxShadow: isSelected ? '0 0 0 2px #F29200' : '0 0 0 2px rgba(0,0,0,0.1)',
-                        zIndex: 2,
-                        transition: 'all 0.2s'
-                      }} />
-
-                      <Box sx={{ minWidth: 70 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: isSelected ? 'primary.main' : 'text.secondary', lineHeight: 1 }}>
-                          {formattedHour}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 'bold' }}>
-                          PARADA #{index + 1}
-                        </Typography>
-                      </Box>
-
-                      <Card
-                        elevation={0}
-                        onClick={() => setSelectedScheduleId(schedule.id)}
+                    return (
+                      <Box
+                        key={schedule.id}
                         sx={{
-                          flexGrow: 1,
-                          width: '100%',
-                          cursor: 'pointer',
-                          border: '1px solid',
-                          borderColor: isSelected ? 'primary.main' : 'divider',
-                          borderRadius: 3,
-                          p: 2,
+                          position: 'relative',
                           display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 2,
-                          backgroundColor: isSelected ? 'rgba(242, 146, 0, 0.01)' : 'background.paper',
-                          transition: 'all 0.2s',
-                          '&:hover': {
-                            borderColor: 'primary.main',
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
-                            transform: 'translateY(-2px)'
-                          },
+                          flexDirection: { xs: 'column', sm: 'row' },
+                          alignItems: { xs: 'flex-start', sm: 'center' },
+                          gap: 2
                         }}
                       >
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-                            {clientInfo ? clientInfo.name : `Cliente ID: ${schedule.client_id}`}
+                        <Box sx={{
+                          position: 'absolute',
+                          left: { xs: '-25px', sm: '-41px' },
+                          top: { xs: '8px', sm: '50%' },
+                          transform: 'translateY(-50%)',
+                          width: 16,
+                          height: 16,
+                          borderRadius: '50%',
+                          bgcolor: isSelected ? 'primary.main' : 'action.disabled',
+                          border: '4px solid',
+                          borderColor: 'background.paper',
+                          boxShadow: isSelected ? '0 0 0 2px #F29200' : '0 0 0 2px rgba(0,0,0,0.1)',
+                          zIndex: 2,
+                          transition: 'all 0.2s'
+                        }} />
+
+                        <Box sx={{ minWidth: 70 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 'bold', color: isSelected ? 'primary.main' : 'text.secondary', lineHeight: 1 }}>
+                            {formattedHour}
                           </Typography>
-                          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            📍 {clientInfo?.address || 'Dirección no registrada'}
+                          <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 'bold' }}>
+                            PARADA #{index + 1}
                           </Typography>
-                          <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                            <Chip label={`Código: ${clientInfo?.code || 'N/A'}`} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 20 }} />
-                            <Chip label={`Doc: ${clientInfo?.document_number || 'N/A'}`} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 20 }} />
-                          </Box>
                         </Box>
 
-                        <Box onClick={(e) => e.stopPropagation()} sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Tooltip title="Eliminar parada">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteSchedule(schedule.id);
-                              }}
-                              sx={{
-                                border: '1px solid',
-                                borderColor: 'error.light',
-                                borderRadius: 2,
-                                p: 0.5,
-                                '&:hover': { bgcolor: 'error.shortest' }
-                              }}
-                            >
-                              🗑️
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </Card>
+                        <Card
+                          elevation={0}
+                          onClick={() => setSelectedScheduleId(schedule.id)}
+                          sx={{
+                            flexGrow: 1,
+                            width: '100%',
+                            cursor: 'pointer',
+                            border: '1px solid',
+                            borderColor: isSelected ? 'primary.main' : 'divider',
+                            borderRadius: 3,
+                            p: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 2,
+                            backgroundColor: isSelected ? 'rgba(242, 146, 0, 0.01)' : 'background.paper',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              borderColor: 'primary.main',
+                              boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+                              transform: 'translateY(-2px)'
+                            },
+                          }}
+                        >
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
+                              {clientInfo ? clientInfo.name : `Cliente ID: ${schedule.client_id}`}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              📍 {clientInfo?.address || 'Dirección no registrada'}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                              <Chip label={`Código: ${clientInfo?.code || 'N/A'}`} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 20 }} />
+                              <Chip label={`Doc: ${clientInfo?.document_number || 'N/A'}`} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 20 }} />
+                            </Box>
+                          </Box>
+
+                          <Box onClick={(e) => e.stopPropagation()} sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Tooltip title="Eliminar parada">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSchedule(schedule.id);
+                                }}
+                                sx={{
+                                  border: '1px solid',
+                                  borderColor: 'error.light',
+                                  borderRadius: 2,
+                                  p: 0.5,
+                                  '&:hover': { bgcolor: 'error.shortest' }
+                                }}
+                              >
+                                🗑️
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </Card>
+                      </Box>
+                    );
+                  })
+                ) : (
+                  <Box sx={{ p: 6, textAlign: 'center', border: '2px dashed', borderColor: 'divider', borderRadius: 4, bgcolor: 'action.hover' }}>
+                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                      No hay paradas agendadas para esta fecha
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {dailyRoutes.length > 0 ? (
+                  dailyRoutes.map((route) => (
+                    <Box key={route.id} sx={{ mb: 2 }}>
+                      <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: 'action.hover', borderLeft: '4px solid', borderColor: 'primary.main' }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                          🔀 Ruta: {route.name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          Asignada para: {route.scheduled_date}
+                        </Typography>
+                      </Paper>
+
+                      <Box sx={{
+                        position: 'relative',
+                        pl: { xs: 2, sm: 4 },
+                        borderLeft: '2px solid',
+                        borderColor: 'divider',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2
+                      }}>
+                        {route.waypoints && route.waypoints.length > 0 ? (
+                          route.waypoints.map((wp) => {
+                            const clientInfo = clients.find(c => c.id === wp.client_id);
+                            const statusColor = wp.status === 'VISITA' ? 'success' : wp.status === 'CANCELADA' ? 'error' : 'default';
+                            const statusLabel = wp.status === 'VISITA' ? 'Visitada' : wp.status === 'CANCELADA' ? 'Cancelada' : 'Pendiente';
+
+                            return (
+                              <Card
+                                key={wp.id}
+                                elevation={0}
+                                sx={{
+                                  border: '1px solid',
+                                  borderColor: 'divider',
+                                  borderRadius: 3,
+                                  p: 2,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 1.5
+                                }}
+                              >
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
+                                  <Box>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                      Parada #{wp.order_sequence}: {clientInfo ? clientInfo.name : `Cliente ID: ${wp.client_id}`}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                      📍 {wp.address}
+                                    </Typography>
+                                  </Box>
+                                  <Chip label={statusLabel} color={statusColor} size="small" sx={{ fontWeight: 'bold' }} />
+                                </Box>
+
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                  <Chip label={`Código: ${clientInfo?.code || 'N/A'}`} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 20 }} />
+                                  <Chip label={`Doc: ${clientInfo?.document_number || 'N/A'}`} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 20 }} />
+                                  {clientInfo?.cellphone && <Chip label={`Tel: ${clientInfo.cellphone}`} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 20 }} />}
+                                </Box>
+
+                                {wp.comment && (
+                                  <Box sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 2, borderLeft: '3px solid', borderColor: 'primary.main' }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>Comentario de visita:</Typography>
+                                    <Typography variant="body2" sx={{ fontStyle: 'italic' }}>{wp.comment}</Typography>
+                                  </Box>
+                                )}
+
+                                {wp.url_photo && (
+                                  <Box sx={{ mt: 1 }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>Evidencia Fotográfica:</Typography>
+                                    <Box
+                                      component="img"
+                                      src={`${getBaseUrl()}${wp.url_photo}`}
+                                      alt="Evidencia"
+                                      sx={{ maxWidth: 150, maxHeight: 150, borderRadius: 2, objectFit: 'cover', cursor: 'pointer', border: '1px solid', borderColor: 'divider' }}
+                                      onClick={() => window.open(`${getBaseUrl()}${wp.url_photo}`, '_blank')}
+                                    />
+                                  </Box>
+                                )}
+                              </Card>
+                            );
+                          })
+                        ) : (
+                          <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                            Esta ruta no contiene paradas.
+                          </Typography>
+                        )}
+                      </Box>
                     </Box>
-                  );
-                })
-              ) : (
-                <Box sx={{ p: 6, textAlign: 'center', border: '2px dashed', borderColor: 'divider', borderRadius: 4, bgcolor: 'action.hover' }}>
-                  <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                    No hay paradas agendadas para esta fecha
-                  </Typography>
-                </Box>
-              )}
-            </Box>
+                  ))
+                ) : (
+                  <Box sx={{ p: 6, textAlign: 'center', border: '2px dashed', borderColor: 'divider', borderRadius: 4, bgcolor: 'action.hover' }}>
+                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                      No hay rutas asignadas para esta fecha
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            )}
           </Grid>
 
-          {/* 📝 PANEL DERECHO (DETALLES Y TAREAS MODIFICADO) */}
+          {/* PANEL DERECHO */}
           <Grid size={{ xs: 12, md: 5 }}>
             <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 4, p: 3, height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'background.paper' }}>
               {activeScheduleData && activeClientData ? (
@@ -421,7 +592,7 @@ export const RouteItinerary: React.FC = () => {
 
                   <Divider />
 
-                  {/* 📝 SECCIÓN: Observación de Gestión Comercial */}
+                  {/* Observación de Gestión Comercial */}
                   <Box>
                     <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                       📝 Observación de Gestión Comercial
@@ -433,7 +604,7 @@ export const RouteItinerary: React.FC = () => {
                     </Box>
                   </Box>
 
-                  {/* 👤 SECCIÓN: Datos del Cliente con IDs Resueltos Relacionalmente */}
+                  {/* Datos del Cliente */}
                   <Box sx={{ flexGrow: 1 }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                       👤 Datos del Cliente
@@ -503,7 +674,7 @@ export const RouteItinerary: React.FC = () => {
         </Grid>
       )}
 
-      {/* 🚀 MODAL TOTALMENTE INTEGRADO Y ACTIVO */}
+      {/* MODAL PROGRAMAR VISITA */}
       <ScheduleModal
         open={openModal}
         onClose={() => {
@@ -513,6 +684,7 @@ export const RouteItinerary: React.FC = () => {
         initialDate={targetDateStr}
       />
 
+      {/* MODAL CREAR RUTA */}
       <CreateRouteModal
         open={openRouteModal}
         onClose={() => {
