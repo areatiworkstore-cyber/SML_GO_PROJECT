@@ -26,5 +26,17 @@ export const employeeService = {
         });
     },
 
+    /**
+     * Elimina lógicamente un usuario
+     */
+    deleteEmployee(id: number): Promise<void> {
+        return apiClient.delete<void>(`/users/${id}`);
+    },
 
+    /**
+     * Restaura un usuario eliminado lógicamente
+     */
+    restoreEmployee(id: number): Promise<void> {
+        return apiClient.patch<void>(`/users/${id}/restore`);
+    },
 };

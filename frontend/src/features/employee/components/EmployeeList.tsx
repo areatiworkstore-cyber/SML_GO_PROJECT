@@ -93,15 +93,24 @@ export const EmployeeList: React.FC = () => {
         }
     };
 
-    const handleDeleteEmployee = async (id: number) => {
+    const handleToggleActive = async (employee: Employee) => {
+        const isActive = employee.active !== false;
+        const actionText = isActive ? 'desactivar' : 'activar';
         const confirmed = await showConfirm({
-            title: 'Confirmar Eliminación',
-            message: '¿Está seguro de desactivar/eliminar este empleado?'
+            title: isActive ? 'Confirmar Desactivación' : 'Confirmar Activación',
+            message: `¿Está seguro de ${actionText} a ${employee.first_name}?`
         });
         if (confirmed) {
             try {
-                showSuccess('Empleado eliminado correctamente');
-                loadEmployees();
+                if (isActive) {
+                    await employeeService.deleteEmployee(employee.id);
+                    showSuccess('Empleado desactivado correctamente');
+                    setEmployees(prev => prev.map(emp => emp.id === employee.id ? { ...emp, active: false } : emp));
+                } else {
+                    await employeeService.restoreEmployee(employee.id);
+                    showSuccess('Empleado activado correctamente');
+                    setEmployees(prev => prev.map(emp => emp.id === employee.id ? { ...emp, active: true } : emp));
+                }
             } catch (error) {
                 showError(error);
             }
@@ -180,18 +189,14 @@ export const EmployeeList: React.FC = () => {
                                     <TableCell sx={{ fontWeight: 'bold' }}>N° Documento</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold' }}>Rol del Sistema</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold' }}>Correo Electrónico</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Estado</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Acciones</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {filteredEmployees.map((emp) => {
-                                    // 1. Obtenemos la asignación de rol embebida en el empleado
                                     const userRoleAssignment = emp.roles?.[0];
-
-                                    // 2. Extraemos el role_id
                                     const roleId = userRoleAssignment?.role_id;
-
-                                    // 3. Resolvemos usando el mapeo de IDs o los detalles de rol embebidos
                                     const systemRole = (roleId && ROLE_MAP[roleId]) ||
                                         userRoleAssignment?.role_details?.role ||
                                         (emp.code?.startsWith('ADM') ? 'ADMIN' : 'VENDEDOR');
@@ -212,6 +217,13 @@ export const EmployeeList: React.FC = () => {
                                                 />
                                             </TableCell>
                                             <TableCell>{emp.email}</TableCell>
+                                            <TableCell>
+                                                {emp.active !== false ? (
+                                                    <Chip label="Activo" size="small" color="success" sx={{ fontWeight: 'bold' }} />
+                                                ) : (
+                                                    <Chip label="Inactivo" size="small" color="default" sx={{ fontWeight: 'bold' }} />
+                                                )}
+                                            </TableCell>
                                             <TableCell align="center">
                                                 <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
                                                     <Tooltip title="Ver detalles">
@@ -220,9 +232,15 @@ export const EmployeeList: React.FC = () => {
                                                     <Tooltip title="Editar">
                                                         <IconButton size="small" color="primary" onClick={() => handleOpenModal('edit', emp)}>✏️</IconButton>
                                                     </Tooltip>
-                                                    <Tooltip title="Eliminar">
-                                                        <IconButton size="small" color="error" onClick={() => handleDeleteEmployee(emp.id)}>🗑️</IconButton>
-                                                    </Tooltip>
+                                                    {emp.active !== false ? (
+                                                        <Tooltip title="Desactivar">
+                                                            <IconButton size="small" color="error" onClick={() => handleToggleActive(emp)}>🚫</IconButton>
+                                                        </Tooltip>
+                                                    ) : (
+                                                        <Tooltip title="Activar">
+                                                            <IconButton size="small" color="success" onClick={() => handleToggleActive(emp)}>✅</IconButton>
+                                                        </Tooltip>
+                                                    )}
                                                 </Box>
                                             </TableCell>
                                         </TableRow>
@@ -230,7 +248,7 @@ export const EmployeeList: React.FC = () => {
                                 })}
                                 {filteredEmployees.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary', fontStyle: 'italic' }}>
+                                        <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary', fontStyle: 'italic' }}>
                                             No se encontraron empleados registrados en el sistema.
                                         </TableCell>
                                     </TableRow>
