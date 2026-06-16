@@ -143,7 +143,7 @@ def delete_client(
     crud_client.delete_client(db, client_id=client_id)
     return None
 
-@router.put("/{client_id}/activate")
+@router.put("/{client_id}/activate", status_code=status.HTTP_200_OK)
 def activate_client(
     client_id: int,
     db: Session = Depends(get_db),
