@@ -65,6 +65,52 @@ def update_user(
         )
     return crud_user.update_user(db, db_user=db_user, user_in=user_in.model_dump(exclude_unset=True))
 
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_roles(["ADMIN"])) 
+):
+    """
+    Elimina lógicamente un usuario (desactivándolo).
+    """
+    db_user = crud_user.get_user_by_id(db, user_id=user_id)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # Prevenir borrado del propio usuario
+    if db_user.id == current_user.id:
+        raise HTTPException(
+            status_code=400, 
+            detail="No puedes eliminar tu propia cuenta desde aquí."
+        )
+        
+    success = crud_user.delete_user(db, db_user=db_user)
+    
+    if not success:
+         raise HTTPException(status_code=500, detail="No se pudo eliminar el usuario")
+
+@router.patch("/{user_id}/restore", status_code=status.HTTP_200_OK)
+def restore_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_roles(["ADMIN"])) 
+):
+    """
+    Restaura un usuario eliminado lógicamente.
+    """
+    db_user = crud_user.get_user_by_id(db, user_id=user_id)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # Restaurar el usuario
+    success = crud_user.restore_user(db, db_user=db_user)
+    
+    if not success:
+         raise HTTPException(status_code=500, detail="No se pudo restaurar el usuario")
+    
+    return db_user
+
 @router.get("/me", response_model=UserPerfilResponse)
 def read_user_me(
     current_user: User = Depends(get_current_user)
@@ -73,4 +119,4 @@ def read_user_me(
     Obtiene el perfil del usuario actual.
     """
     return current_user
-
+

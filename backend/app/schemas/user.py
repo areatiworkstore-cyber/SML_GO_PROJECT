@@ -29,6 +29,7 @@ class UserBase(BaseModel):
     document_number: str
     cellphone: str
     email: EmailStr
+    active: bool
 
 class UserPerfilResponse(BaseModel):
     id: int
@@ -41,6 +42,7 @@ class UserPerfilResponse(BaseModel):
     document_number : str
     cellphone       : str
     email           : str
+    active          : bool
     roles           : List[RoleUserResponse] = []
 
     class Config:

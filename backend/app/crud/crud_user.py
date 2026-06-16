@@ -65,6 +65,30 @@ def update_user(db: Session, db_user: User, user_in: dict) -> User:
     db.refresh(db_user)
     return db_user
 
+def delete_user(db: Session, db_user: User) -> bool:
+    """
+    Elimina lógicamente el usuario (soft-delete).
+    """
+    # Marcar como inactivo
+    db_user.active = False
+    
+    # Marcar como eliminado (opcional, si tienes campo deleted_at)
+    # from datetime import datetime
+    # db_user.deleted_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(db_user)
+    return True
+
+def restore_user(db: Session, db_user: User) -> bool:
+    """
+    Restaura un usuario eliminado lógicamente.
+    """
+    db_user.active = True
+    db.commit()
+    db.refresh(db_user)
+    return True
+
 '''
 Metodos CRUD para el modelo RoleUser
 '''

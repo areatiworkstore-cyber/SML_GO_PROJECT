@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func, Boolean
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -19,6 +19,7 @@ class User(Base):
     cellphone = Column(String(9), nullable=False)
     email = Column(String(30), nullable=False, index=True)
     password = Column(String(255), nullable=False)
+    active = Column(Boolean, default=True, nullable=True)
 
     document_type = relationship("DocumentType", back_populates="users")
     roles = relationship("RoleUser", back_populates="user")
