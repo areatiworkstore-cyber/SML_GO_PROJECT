@@ -14,8 +14,11 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 
 import { getTheme, type ThemeMode } from './theme';
 import { RouteItinerary } from './features/routes/components/RouteItinerary';
@@ -23,7 +26,7 @@ import { ClientForm } from './features/clients/components/ClientForm';
 import { CustomerPortfolio } from './features/clients/components/CustomerPortfolio';
 import { CustomerMap } from './features/clients/components/CustomerMap';
 import { SellerAudit } from './features/audit/components/SellerAudit';
-import { AuthProvider, useAuth, Login } from './features/auth';
+import { AuthProvider, useAuth, Login, UserProfileModal } from './features/auth';
 import { NotificationProvider } from './context/NotificationContext';
 import { EmployeeList } from './features/employee';
 
@@ -74,6 +77,8 @@ function AppContent() {
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   const [activeView, setActiveView] = useState<'agenda' | 'register' | 'portfolio' | 'audit' | 'employees' | 'map'>('agenda');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   const toggleThemeMode = () => {
     setThemeMode((prevMode) => (prevMode === 'dark' ? 'light' : 'dark'));
@@ -83,8 +88,21 @@ function AppContent() {
     setMobileOpen(!mobileOpen);
   };
 
+  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setProfileMenuAnchor(event.currentTarget);
+  };
+
+  const handleProfileMenuClose = () => {
+    setProfileMenuAnchor(null);
+  };
+
+  const handleOpenProfile = () => {
+    handleProfileMenuClose();
+    setProfileModalOpen(true);
+  };
+
   React.useEffect(() => {
-    if (activeView === 'employees' && user?.role !== 'ADMINISTRADOR' && user?.role !== 'ADMIN') {
+    if ((activeView === 'employees' || activeView === 'audit') && user?.role !== 'ADMINISTRADOR' && user?.role !== 'ADMIN') {
       setActiveView('agenda');
     }
   }, [activeView, user]);
@@ -104,6 +122,7 @@ function AppContent() {
 
   const menuItems = baseMenuItems.filter(item => {
     if (item.id === 'employees' && user?.role !== 'ADMINISTRADOR' && user?.role !== 'ADMIN') return false;
+    if (item.id === 'audit' && user?.role !== 'ADMINISTRADOR' && user?.role !== 'ADMIN') return false;
     return true;
   });
 
@@ -269,36 +288,89 @@ function AppContent() {
                   </div>
                 </div>
 
-                {/* Reemplazo por Google Material Symbol Icon */}
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 38,
-                    height: 38,
-                    borderRadius: '50%',
-                    border: '2px solid',
-                    borderColor: 'primary.main',
-                    boxShadow: '0 2px 8px rgba(242, 146, 0, 0.2)',
-                    backgroundColor: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 29, 51, 0.05)',
-                    color: '#F29200',
-                  }}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{
-                      fontSize: '28px',
-                      fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 40"
+                {/* Avatar interactivo */}
+                <Tooltip title="Ver opciones de perfil">
+                  <Box
+                    id="user-profile-button"
+                    aria-controls={profileMenuAnchor ? 'user-profile-menu' : undefined}
+                    aria-haspopup="true"
+                    aria-expanded={profileMenuAnchor ? 'true' : undefined}
+                    onClick={handleProfileMenuOpen}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 38,
+                      height: 38,
+                      borderRadius: '50%',
+                      border: '2px solid',
+                      borderColor: 'primary.main',
+                      boxShadow: '0 2px 8px rgba(242, 146, 0, 0.2)',
+                      backgroundColor: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 29, 51, 0.05)',
+                      color: '#F29200',
+                      cursor: 'pointer',
+                      transition: 'box-shadow 0.2s, background-color 0.2s',
+                      '&:hover': {
+                        boxShadow: '0 4px 16px rgba(242, 146, 0, 0.4)',
+                        backgroundColor: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(15, 29, 51, 0.1)',
+                      },
                     }}
                   >
-                    account_circle
-                  </span>
-                </Box>
+                    <span
+                      className="material-symbols-outlined"
+                      style={{
+                        fontSize: '28px',
+                        fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 40"
+                      }}
+                    >
+                      account_circle
+                    </span>
+                  </Box>
+                </Tooltip>
+
+                {/* Menú desplegable de perfil */}
+                <Menu
+                  id="user-profile-menu"
+                  anchorEl={profileMenuAnchor}
+                  open={Boolean(profileMenuAnchor)}
+                  onClose={handleProfileMenuClose}
+                  transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                  anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                  slotProps={{
+                    list: {
+                      'aria-labelledby': 'user-profile-button',
+                    },
+                    paper: {
+                      elevation: 4,
+                      sx: {
+                        mt: 1,
+                        borderRadius: 2,
+                        minWidth: 180,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                      },
+                    },
+                  }}
+                >
+                  <MenuItem
+                    id="menu-item-view-profile"
+                    onClick={handleOpenProfile}
+                    sx={{ gap: 1.5, fontWeight: 600, py: 1.25 }}
+                  >
+                    <ManageAccountsIcon sx={{ fontSize: 20, color: '#F29200' }} />
+                    Ver mi perfil
+                  </MenuItem>
+                </Menu>
               </div>
             </div>
           </Toolbar>
         </AppBar>
+
+        {/* Modal de Perfil */}
+        <UserProfileModal
+          open={profileModalOpen}
+          onClose={() => setProfileModalOpen(false)}
+        />
 
         <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
           <Drawer
