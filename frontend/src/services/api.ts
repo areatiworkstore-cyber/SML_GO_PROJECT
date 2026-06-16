@@ -80,19 +80,11 @@ export const apiClient = {
   },
 
   post<T>(endpoint: string, body?: any, options?: Omit<FetchOptions, 'method' | 'body'>): Promise<T> {
-    return executeRequest<T>(endpoint, {
-      ...options,
-      method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    return executeRequest<T>(endpoint, { ...options, method: 'POST', body: body ? JSON.stringify(body) : undefined });
   },
 
   put<T>(endpoint: string, body?: any, options?: Omit<FetchOptions, 'method' | 'body'>): Promise<T> {
-    return executeRequest<T>(endpoint, {
-      ...options,
-      method: 'PUT',
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    return executeRequest<T>(endpoint, { ...options, method: 'PUT', body: body ? JSON.stringify(body) : undefined });
   },
 
   delete<T>(endpoint: string, options?: Omit<FetchOptions, 'method' | 'body'>): Promise<T> {
@@ -102,4 +94,8 @@ export const apiClient = {
   postForm<T>(endpoint: string, formData: FormData, options?: Omit<FetchOptions, 'method' | 'body' | 'headers'>): Promise<T> {
     return executeRequest<T>(endpoint, { ...options, method: 'POST', body: formData });
   },
+
+  patch<T>(endpoint: string, body?: any, options?: Omit<FetchOptions, 'method' | 'body'>): Promise<T> {
+    return executeRequest<T>(endpoint, { ...options, method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
+  }
 };

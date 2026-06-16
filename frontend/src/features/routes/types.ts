@@ -9,6 +9,7 @@ export interface Waypoint {
   status: 'PENDIENTE' | 'VISITA' | 'CANCELADA';
   visited_at?: string;
   comment?: string;
+  url_photo?: string;
 }
 
 export interface WaypointCreate {
@@ -19,6 +20,7 @@ export interface WaypointCreate {
   client_id: number;
   status?: string;
   comment?: string;
+  url_photo?: string;
 }
 
 export interface Route {
