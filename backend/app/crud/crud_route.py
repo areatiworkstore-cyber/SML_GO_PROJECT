@@ -34,6 +34,16 @@ def update_route(db: Session, db_route: Route, route_in: RouteUpdate) -> Route:
     db.refresh(db_route)
     return db_route
 
+def delete_route(db: Session, db_route: Route) -> None:
+    """Elimina una ruta y todas sus paradas."""
+    #Eliminar paradas primero
+    for wp in db_route.waypoints:
+        db.delete(wp)
+    #Eliminar ruta
+    db.delete(db_route)
+    db.commit()
+    return True
+
 def get_waypoint_by_id(db: Session, waypoint_id: int):
     return db.query(Waypoint).filter(Waypoint.id == waypoint_id).first()
 

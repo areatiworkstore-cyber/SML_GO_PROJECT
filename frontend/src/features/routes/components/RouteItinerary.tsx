@@ -13,6 +13,8 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Grid from '@mui/material/Grid';
 import TextField from '@mui/material/TextField';
+import DeleteIcon from '@mui/icons-material/Delete';
+import Stack from '@mui/material/Stack';
 
 import { useNotification } from '../../../context/NotificationContext';
 import { MapButton } from '../../../components/MapButton';
@@ -190,6 +192,27 @@ export const RouteItinerary: React.FC = () => {
       setLoading(true);
       await scheduleService.deleteSchedule(scheduleId);
       showSuccess('La parada ha sido eliminada del itinerario correctamente.');
+      await loadData();
+    } catch (err: any) {
+      showError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🗑️ ELIMINAR RUTA OPTIMIZADA CON EL MODAL GLOBAL
+  const handleDeleteRoute = async (routeId: number) => {
+    const confirmed = await showConfirm({
+      title: 'Eliminar ruta',
+      message: '¿Está seguro de que desea eliminar esta ruta del itinerario? Esta acción no se puede deshacer.',
+    });
+
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      await routeService.deleteRoute(routeId);
+      showSuccess('La ruta ha sido eliminada del itinerario correctamente.');
       await loadData();
     } catch (err: any) {
       showError(err);
@@ -477,9 +500,24 @@ export const RouteItinerary: React.FC = () => {
                   dailyRoutes.map((route) => (
                     <Box key={route.id} sx={{ mb: 2 }}>
                       <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: 'action.hover', borderLeft: '4px solid', borderColor: 'primary.main' }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                          🔀 Ruta: {route.name}
-                        </Typography>
+                        <Stack sx={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                            {route.name}
+                          </Typography>
+                          <Button
+                            color="error"
+                            variant="outlined"
+                            size="small"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => handleDeleteRoute(route.id)}
+                            sx={{
+                              borderRadius: 2,
+                              fontWeight: 600
+                            }}
+                          >
+                            Eliminar
+                          </Button>
+                        </Stack>
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                           Asignada para: {route.scheduled_date}
                         </Typography>

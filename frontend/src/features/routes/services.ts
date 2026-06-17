@@ -15,6 +15,10 @@ export const routeService = {
     return apiClient.post<Route>('/routes', route);
   },
 
+  deleteRoute(routeId: number): Promise<void> {
+    return apiClient.delete(`/routes/${routeId}`);
+  },
+
   updateWaypointStatus(
     waypointId: number,
     status: 'VISITA' | 'CANCELADA',
