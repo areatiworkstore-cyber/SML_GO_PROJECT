@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
@@ -20,6 +20,7 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import TextField from '@mui/material/TextField';
 import { useTheme } from '@mui/material/styles';
+import Fade from '@mui/material/Fade';
 
 import type { Client } from '../../clients/types';
 import type { Route } from '../../routes/types';
@@ -63,7 +64,8 @@ export const SellerAudit: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [schedules, setSchedules] = useState<ClientScheduleResponse[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+  const [loadingInitialAudit, setLoadingInitialAudit] = useState(true);
 
   // Cargar vendedores al montar
   useEffect(() => {
@@ -71,14 +73,10 @@ export const SellerAudit: React.FC = () => {
       setLoadingSellers(true);
       setSellersError(null);
       try {
-        const data = await employeeService.getEmployees(0, 100);
-        // Filtrar todos los trabajadores activos disponibles
-        const activeSellers = (data || []).filter(
-          emp => emp.active !== false
-        );
-        setSellers(activeSellers);
-        if (activeSellers.length > 0) {
-          setSelectedSellerId(activeSellers[0].id);
+        const data = await employeeService.getEmployeesActive();
+        setSellers(data);
+        if (data.length > 0) {
+          setSelectedSellerId(data[0].id);
         }
       } catch (error) {
         console.error('Error cargando vendedores', error);
@@ -92,29 +90,29 @@ export const SellerAudit: React.FC = () => {
 
   // Cargar datos del vendedor seleccionado
   useEffect(() => {
-    if (selectedSellerId) {
-      loadAuditData();
-    }
-  }, [selectedSellerId]);
-
-  const loadAuditData = async () => {
     if (!selectedSellerId) return;
-    setLoading(true);
-    try {
-      const [clientsData, routesData, schedulesData] = await Promise.all([
-        clientService.getClients(selectedSellerId),
-        routeService.getRoutes(selectedSellerId),
-        scheduleService.getSchedules({ user_id: selectedSellerId }),
-      ]);
-      setClients(clientsData);
-      setRoutes(routesData);
-      setSchedules(schedulesData);
-    } catch (error) {
-      console.error('Error cargando información de auditoría', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+    const load = async () => {
+      setLoadingAudit(true);
+
+      try {
+        const [clientsData, routesData, schedulesData] = await Promise.all([
+          clientService.getClients(selectedSellerId),
+          routeService.getRoutes(selectedSellerId),
+          scheduleService.getSchedules({ user_id: selectedSellerId }),
+        ]);
+
+        setClients(clientsData);
+        setRoutes(routesData);
+        setSchedules(schedulesData);
+      } finally {
+        setLoadingAudit(false);
+        setLoadingInitialAudit(false);
+      }
+    };
+
+    load();
+  }, [selectedSellerId]);
 
   // Filtrar vendedores dinámicamente
   const filteredSellers = sellers.filter(seller => {
@@ -134,6 +132,10 @@ export const SellerAudit: React.FC = () => {
 
   // Ordenar fechas descendente
   const sortedScheduleDates = Object.keys(groupedSchedules).sort((a, b) => b.localeCompare(a));
+
+  const clientsMap = useMemo(() => {
+    return new Map(clients.map(c => [c.id, c]));
+  }, [clients]);
 
   return (
     <Box sx={{ p: { xs: 1, md: 3 } }}>
@@ -248,60 +250,70 @@ export const SellerAudit: React.FC = () => {
           </Tabs>
         </Box>
 
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '250px' }}>
-            <CircularProgress color="primary" />
-          </Box>
-        ) : (
-          <Box>
-            {activeTab === 'itineraries' && (
+        <Box sx={{ position: 'relative', minHeight: 300 }}>
+
+          {/* =========================
+              🟦 LOADING INICIAL
+          ========================= */}
+          {loadingInitialAudit && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Skeleton variant="text" width={320} height={40} />
+              <Skeleton variant="rectangular" height={120} sx={{ borderRadius: 2 }} />
+              <Skeleton variant="rectangular" height={120} sx={{ borderRadius: 2 }} />
+            </Box>
+          )}
+
+          {/* =========================
+              🟢 ITINERARIOS / AGENDAS
+          ========================= */}
+          {!loadingInitialAudit && activeTab === 'itineraries' && (
+            <Fade in timeout={300}>
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 3 }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 3 }}>
                   Historial de Itinerarios y Agendas
                 </Typography>
+
                 {sortedScheduleDates.length > 0 ? (
                   sortedScheduleDates.map((dateStr) => (
                     <Paper key={dateStr} variant="outlined" sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 2 }}>
+                      <Typography sx={{ fontWeight: 'bold', color: 'primary.main', mb: 2 }}>
                         📅 Fecha: {dateStr.split('-').reverse().join('/')}
                       </Typography>
+
                       <List disablePadding>
                         {groupedSchedules[dateStr]
                           .sort((a, b) => a.start_time.localeCompare(b.start_time))
                           .map((schedule) => {
-                            const clientInfo = clients.find(c => c.id === schedule.client_id);
+                            const clientInfo = clientsMap.get(schedule.client_id);
+
                             return (
                               <ListItem
                                 key={schedule.id}
                                 sx={{
                                   mb: 1.5,
-                                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#fafafa',
-                                  border: '1px solid',
-                                  borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 29, 51, 0.06)',
                                   borderRadius: 2,
                                   p: 2,
+                                  border: '1px solid',
+                                  borderColor: 'divider',
                                 }}
                               >
                                 <ListItemText
                                   primary={
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                                      {schedule.start_time.substring(0, 5)} Hrs - {clientInfo ? clientInfo.name : `Cliente ID: ${schedule.client_id}`}
+                                    <Typography sx={{ fontWeight: 'bold' }}>
+                                      {schedule.start_time.substring(0, 5)} Hrs -{" "}
+                                      {clientInfo?.name || `Cliente ID: ${schedule.client_id}`}
                                     </Typography>
                                   }
                                   secondary={
-                                    <Box sx={{ mt: 0.5 }}>
-                                      <Typography variant="body2" color="text.secondary">
-                                        📍 Dirección: {clientInfo?.address || 'No registrada'}
-                                      </Typography>
-                                      {schedule.observation && (
-                                        <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic', color: 'text.secondary' }}>
-                                          Memo: {schedule.observation}
-                                        </Typography>
-                                      )}
-                                    </Box>
+                                    <Typography variant="body2" color="text.secondary">
+                                      📍 {clientInfo?.address || 'Sin dirección'}
+                                    </Typography>
                                   }
                                 />
-                                <MapButton latitude={clientInfo?.latitud} longitude={clientInfo?.longitud} />
+                                <MapButton
+                                  latitude={clientInfo?.latitud}
+                                  longitude={clientInfo?.longitud}
+                                />
                               </ListItem>
                             );
                           })}
@@ -309,73 +321,175 @@ export const SellerAudit: React.FC = () => {
                     </Paper>
                   ))
                 ) : (
-                  <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', textAlign: 'center', py: 4 }}>
-                    No se encontraron itinerarios registrados para este vendedor.
+                  <Typography sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+                    No se encontraron itinerarios registrados.
                   </Typography>
                 )}
               </Box>
-            )}
+            </Fade>
+          )}
 
-            {activeTab === 'routes' && (
+          {/* =========================
+              🔵 RUTAS Y PARADAS (FULL PRO)
+          ========================= */}
+          {!loadingInitialAudit && activeTab === 'routes' && (
+            <Fade in timeout={300}>
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 3 }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 3 }}>
                   Historial de Rutas y Paradas
                 </Typography>
+
                 {routes.length > 0 ? (
                   routes.map((route) => (
-                    <Paper key={route.id} variant="outlined" sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', mb: 2, gap: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                          🔀 Ruta: {route.name}
+                    <Paper
+                      key={route.id}
+                      variant="outlined"
+                      sx={{ p: 3, mb: 3, borderRadius: 3 }}
+                    >
+                      {/* HEADER RUTA */}
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          mb: 2,
+                          gap: 1,
+                        }}
+                      >
+                        <Typography sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                          {route.name}
                         </Typography>
-                        <Chip label={`Fecha: ${String(route.scheduled_date).split('-').reverse().join('/')}`} size="small" variant="outlined" sx={{ fontWeight: 'bold' }} />
+
+                        <Chip
+                          label={`Fecha: ${String(route.scheduled_date)
+                            .split('-')
+                            .reverse()
+                            .join('/')}`}
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontWeight: 'bold' }}
+                        />
                       </Box>
 
                       <Divider sx={{ my: 1.5 }} />
 
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-                        {route.waypoints && route.waypoints.length > 0 ? (
+                      {/* WAYPOINTS */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {route.waypoints?.length > 0 ? (
                           route.waypoints.map((wp) => {
-                            const clientInfo = clients.find(c => c.id === wp.client_id);
-                            const statusColor = wp.status === 'VISITA' ? 'success' : wp.status === 'CANCELADA' ? 'error' : 'default';
-                            const statusLabel = wp.status === 'VISITA' ? 'Visitada' : wp.status === 'CANCELADA' ? 'Cancelada' : 'Pendiente';
+                            const clientInfo = clientsMap.get(wp.client_id);
+
+                            const statusColor =
+                              wp.status === 'VISITA'
+                                ? 'success'
+                                : wp.status === 'CANCELADA'
+                                  ? 'error'
+                                  : 'default';
+
+                            const statusLabel =
+                              wp.status === 'VISITA'
+                                ? 'Visitada'
+                                : wp.status === 'CANCELADA'
+                                  ? 'Cancelada'
+                                  : 'Pendiente';
 
                             return (
-                              <Card key={wp.id} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', mb: 1, gap: 1 }}>
+                              <Card
+                                key={wp.id}
+                                elevation={0}
+                                sx={{
+                                  border: '1px solid',
+                                  borderColor: 'divider',
+                                  borderRadius: 2,
+                                  p: 2,
+                                }}
+                              >
+                                {/* HEADER PARADA */}
+                                <Box
+                                  sx={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'flex-start',
+                                    flexWrap: 'wrap',
+                                    mb: 1,
+                                  }}
+                                >
                                   <Box>
                                     <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                                      Parada #{wp.order_sequence}: {clientInfo ? clientInfo.name : `Cliente ID: ${wp.client_id}`}
+                                      Parada #{wp.order_sequence}:{' '}
+                                      {clientInfo?.name || `Cliente ID: ${wp.client_id}`}
                                     </Typography>
+
                                     <Typography variant="body2" color="text.secondary">
-                                      📍 Dirección: {wp.address}
+                                      🚩 {wp.address}
                                     </Typography>
                                   </Box>
-                                  <Chip label={statusLabel} color={statusColor} size="small" sx={{ fontWeight: 'bold' }} />
+
+                                  <Chip label={statusLabel} color={statusColor} size="small" />
                                 </Box>
 
-                                <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                                  <Chip label={`Código Cliente: ${clientInfo?.code || 'N/A'}`} size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
-                                  <Chip label={`Doc Cliente: ${clientInfo?.document_number || 'N/A'}`} size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
-                                  {clientInfo?.cellphone && <Chip label={`Teléfono: ${clientInfo.cellphone}`} size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />}
+                                {/* INFO CLIENTE */}
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                                  <Chip label={`Código: ${clientInfo?.code || 'N/A'}`} size="small" />
+                                  <Chip label={`Doc: ${clientInfo?.document_number || 'N/A'}`} size="small" />
+                                  {clientInfo?.cellphone && (
+                                    <Chip label={`Tel: ${clientInfo.cellphone}`} size="small" />
+                                  )}
                                 </Box>
 
+                                {/* COMENTARIO */}
                                 {wp.comment && (
-                                  <Box sx={{ mt: 1.5, p: 1.5, bgcolor: 'action.hover', borderRadius: 1.5, borderLeft: '3px solid', borderColor: 'primary.main' }}>
-                                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>Comentario:</Typography>
-                                    <Typography variant="body2" sx={{ fontStyle: 'italic' }}>{wp.comment}</Typography>
+                                  <Box
+                                    sx={{
+                                      mt: 1.5,
+                                      p: 1.5,
+                                      bgcolor: 'action.hover',
+                                      borderRadius: 1.5,
+                                      borderLeft: '3px solid',
+                                      borderColor: 'primary.main',
+                                    }}
+                                  >
+                                    <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                                      Comentario:
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                                      {wp.comment}
+                                    </Typography>
                                   </Box>
                                 )}
 
+                                {/* 📸 IMAGEN EVIDENCIA */}
                                 {wp.url_photo && (
-                                  <Box sx={{ mt: 1.5 }}>
-                                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>Foto de evidencia:</Typography>
+                                  <Box sx={{ mt: 2 }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                                      Evidencia fotográfica:
+                                    </Typography>
+
                                     <Box
                                       component="img"
                                       src={`${getBaseUrl()}${wp.url_photo}`}
-                                      alt="Evidencia fotográfica"
-                                      sx={{ maxWidth: 200, maxHeight: 200, borderRadius: 2, objectFit: 'cover', cursor: 'pointer', border: '1px solid', borderColor: 'divider' }}
-                                      onClick={() => window.open(`${getBaseUrl()}${wp.url_photo}`, '_blank')}
+                                      alt="Evidencia"
+                                      loading="lazy"
+                                      sx={{
+                                        mt: 1,
+                                        width: '100%',
+                                        maxWidth: 280,
+                                        maxHeight: 220,
+                                        borderRadius: 2,
+                                        objectFit: 'cover',
+                                        cursor: 'pointer',
+                                        border: '1px solid',
+                                        borderColor: 'divider',
+                                        transition: '0.2s',
+                                        '&:hover': {
+                                          transform: 'scale(1.02)',
+                                          boxShadow: 3,
+                                        },
+                                      }}
+                                      onClick={() =>
+                                        window.open(`${getBaseUrl()}${wp.url_photo}`, '_blank')
+                                      }
                                     />
                                   </Box>
                                 )}
@@ -383,7 +497,7 @@ export const SellerAudit: React.FC = () => {
                             );
                           })
                         ) : (
-                          <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                          <Typography sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
                             Esta ruta no contiene paradas.
                           </Typography>
                         )}
@@ -391,22 +505,46 @@ export const SellerAudit: React.FC = () => {
                     </Paper>
                   ))
                 ) : (
-                  <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', textAlign: 'center', py: 4 }}>
-                    No se encontraron rutas registradas para este vendedor.
+                  <Typography sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+                    No hay rutas registradas para este vendedor.
                   </Typography>
                 )}
               </Box>
-            )}
+            </Fade>
+          )}
 
-            {activeTab === 'upcoming' && (
-              <Box sx={{ py: 6, textAlign: 'center' }}>
-                <Typography variant="h6" color="text.secondary">
-                  Esta funcionalidad estará disponible próximamente 🚀
+          {/* =========================
+              🟣 PRÓXIMAMENTE
+          ========================= */}
+          {!loadingInitialAudit && activeTab === 'upcoming' && (
+            <Fade in timeout={300}>
+              <Box sx={{ textAlign: 'center', py: 8, px: 3 }}>
+                <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2, color: 'primary.main' }}>
+                  Centro de Reportes Avanzados
+                </Typography>
+
+                <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 500, mx: 'auto' }}>
+                  Módulo de análisis avanzado con KPIs de vendedores, cumplimiento de rutas,
+                  auditoría inteligente y reportes automáticos en tiempo real.
+                </Typography>
+
+                <Typography sx={{ mt: 3, fontStyle: 'italic', color: 'text.secondary' }}>
+                  🚀 Próximamente disponible
                 </Typography>
               </Box>
-            )}
-          </Box>
-        )}
+            </Fade>
+          )}
+
+          {/* =========================
+              🟡 LOADING BACKGROUND
+          ========================= */}
+          {loadingAudit && !loadingInitialAudit && (
+            <Box sx={{ position: 'absolute', top: 10, right: 10 }}>
+              <CircularProgress size={20} />
+            </Box>
+          )}
+
+        </Box>
       </Paper>
     </Box>
   );
