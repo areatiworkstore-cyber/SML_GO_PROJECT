@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user, check_roles
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, UserPerfilResponse, RoleUserResponse, RoleUserUpdate, UserUpdate
+from app.schemas.user import UserCreate, UserResponse, UserPerfilResponse, UserUpdate
 from app.crud import crud_user
 
 router = APIRouter()
@@ -46,6 +46,18 @@ def read_users(
     Recupera todos los usuarios (Vendedores, Administradores, etc. - Solo Admin).
     """
     return crud_user.get_users(db, skip=skip, limit=limit)
+
+@router.get("/active", response_model=List[UserResponse])
+def read_users_active(
+    db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = 30,
+    current_user: User = Depends(check_roles(["ADMIN"]))
+):
+    """
+    Recupera todos los usuarios activos (Vendedores, Administradores, etc. - Solo Admin y Agente).
+    """
+    return crud_user.get_users_active(db, skip=skip, limit=limit)
 
 @router.put("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
 def update_user(
