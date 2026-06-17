@@ -18,17 +18,13 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import SettingsIcon from '@mui/icons-material/Settings';
+import { lazy, Suspense } from 'react';
 
 import { getTheme, type ThemeMode } from './theme';
-import { RouteItinerary } from './features/routes/components/RouteItinerary';
-import { ClientForm } from './features/clients/components/ClientForm';
-import { CustomerPortfolio } from './features/clients/components/CustomerPortfolio';
-import { CustomerMap } from './features/clients/components/CustomerMap';
-import { SellerAudit } from './features/audit/components/SellerAudit';
 import { AuthProvider, useAuth, Login, UserProfileModal } from './features/auth';
 import { NotificationProvider } from './context/NotificationContext';
-import { EmployeeList } from './features/employee';
+import { ModuleLoader } from './components/ModuleLoader';
 
 import smlLogo from './assets/sml_Go.png';
 
@@ -100,6 +96,30 @@ function AppContent() {
     handleProfileMenuClose();
     setProfileModalOpen(true);
   };
+
+  const RouteItinerary = lazy(() =>
+    import('./features/routes/components/RouteItinerary')
+  );
+
+  const ClientForm = lazy(() =>
+    import('./features/clients/components/ClientForm')
+  );
+
+  const CustomerPortfolio = lazy(() =>
+    import('./features/clients/components/CustomerPortfolio')
+  );
+
+  const CustomerMap = lazy(() =>
+    import('./features/clients/components/CustomerMap')
+  );
+
+  const SellerAudit = lazy(() =>
+    import('./features/audit/components/SellerAudit')
+  );
+
+  const EmployeeList = lazy(() =>
+    import('./features/employee/components/EmployeeList')
+  );
 
   React.useEffect(() => {
     if ((activeView === 'employees' || activeView === 'audit') && user?.role !== 'ADMINISTRADOR' && user?.role !== 'ADMIN') {
@@ -357,7 +377,7 @@ function AppContent() {
                     onClick={handleOpenProfile}
                     sx={{ gap: 1.5, fontWeight: 600, py: 1.25 }}
                   >
-                    <ManageAccountsIcon sx={{ fontSize: 20, color: '#F29200' }} />
+                    <SettingsIcon sx={{ fontSize: 20, color: '#F29200' }} />
                     Ver mi perfil
                   </MenuItem>
                 </Menu>
@@ -406,14 +426,16 @@ function AppContent() {
           }}
         >
           <Container maxWidth="xl" disableGutters>
-            <ViewErrorBoundary>
-              {activeView === 'agenda' && <RouteItinerary />}
-              {activeView === 'portfolio' && <CustomerPortfolio />}
-              {activeView === 'map' && <CustomerMap />}
-              {activeView === 'employees' && <EmployeeList />}
-              {activeView === 'register' && <ClientForm />}
-              {activeView === 'audit' && <SellerAudit />}
-            </ViewErrorBoundary>
+            <Suspense fallback={<ModuleLoader />}>
+              <ViewErrorBoundary>
+                {activeView === 'agenda' && <RouteItinerary />}
+                {activeView === 'portfolio' && <CustomerPortfolio />}
+                {activeView === 'map' && <CustomerMap />}
+                {activeView === 'employees' && <EmployeeList />}
+                {activeView === 'register' && <ClientForm />}
+                {activeView === 'audit' && <SellerAudit />}
+              </ViewErrorBoundary>
+            </Suspense>
           </Container>
         </Box>
       </div>
