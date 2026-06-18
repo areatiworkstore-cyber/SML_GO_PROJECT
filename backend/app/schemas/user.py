@@ -11,9 +11,16 @@ class RoleUserBase(BaseModel):
 class RoleUserUpdate(RoleUserBase):
     pass
 
-class RoleUserResponse(RoleUserBase):
+class RoleUserResponse(BaseModel):
     id: int
     role_details: Optional[RoleResponse] = None
+
+    class Config:
+        from_attributes = True
+    
+class UserRoleSimple(BaseModel):
+    id: int
+    role: str
 
     class Config:
         from_attributes = True
@@ -43,7 +50,7 @@ class UserPerfilResponse(BaseModel):
     cellphone       : str
     email           : str
     active          : bool
-    roles           : List[RoleUserResponse] = []
+    roles           : List[str] = []
 
     class Config:
         from_attributes = True

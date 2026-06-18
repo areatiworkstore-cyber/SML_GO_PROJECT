@@ -130,5 +130,22 @@ def read_user_me(
     """
     Obtiene el perfil del usuario actual.
     """
-    return current_user
+    return {
+        "id": current_user.id,
+        "code": current_user.code,
+        "first_name": current_user.first_name,
+        "second_name": current_user.second_name,
+        "first_surname": current_user.first_surname,
+        "second_surname": current_user.second_surname,
+        "document_type": current_user.document_type,
+        "document_number": current_user.document_number,
+        "cellphone": current_user.cellphone,
+        "email": current_user.email,
+        "active": current_user.active,
+        "roles": [
+            ru.role_details.role
+            for ru in current_user.roles
+            if ru.role_details
+        ]
+    }
 
