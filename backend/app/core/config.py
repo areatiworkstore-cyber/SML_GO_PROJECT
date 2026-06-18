@@ -19,8 +19,7 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5173",
+        "https://smlgo.sml.com.pe"
     ]
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")

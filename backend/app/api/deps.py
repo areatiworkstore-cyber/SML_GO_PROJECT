@@ -1,5 +1,5 @@
 from typing import Generator, List
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
@@ -11,18 +11,35 @@ from app.models.user import User
 from app.schemas.auth import TokenData
 from app.crud.crud_user import get_user_by_id
 
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login"
-)
+def get_token_from_cookie(request: Request) -> str:
+    token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario no autenticado"
+        )
+
+    return token
 
 def get_current_user(
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    request: Request,
+    db: Session = Depends(get_db)
 ) -> User:
+    """
+    Obtener el usuario actual desde la cookie de autenticación.
+    """
+    token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario no autenticado"
+        )
+    
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No se pudieron validar las credenciales",
-        headers={"WWW-Authenticate": "Bearer"},
+        detail="No se pudieron validar las credenciales"
     )
     try:
         payload = jwt.decode(
@@ -45,11 +62,15 @@ def get_current_user(
 
 def check_roles(required_roles: List[str]):
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        user_roles = [ru.role_details.role for ru in current_user.roles]
+        user_roles = [
+            ru.role_details.role 
+            for ru in current_user.roles
+        ]
         if not any(role in user_roles for role in required_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="El usuario no tiene los permisos necesarios"
             )
+            
         return current_user
     return role_checker

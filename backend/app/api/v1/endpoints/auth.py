@@ -1,5 +1,5 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -11,21 +11,22 @@ from app.schemas.auth import Token
 
 router = APIRouter()
 
-@router.post("/login", response_model=Token)
+@router.post("/login")
 def login_for_access_token(
+    response: Response,
     db: Session = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends()
 ):
-    # Try to find user by email first, then by code
+    # Intento obtener el usuario por email, si no existe, intento obtenerlo por código
     user = get_user_by_email(db, email=form_data.username)
     if not user:
         user = get_user_by_code(db, code=form_data.username)
         
+    # Si no existe el usuario o la contraseña es incorrecta, lanzo una excepción
     if not user or not verify_password(form_data.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Correo o contraseña incorrectos",
-            headers={"WWW-Authenticate": "Bearer"},
         )
         
     roles = [ru.role_details.role for ru in user.roles]
@@ -33,9 +34,31 @@ def login_for_access_token(
     access_token = create_access_token(
         subject=user.id, expires_delta=access_token_expires
     )
+
+    response.set_cookie(
+        key="access_token", # Nombre de la cookie
+        value=access_token, # El token JWT generado
+        httponly=True, # La cookie no es accesible por JavaScript
+        secure=False, # En producción, usar True junto con SameSite=None y protocolo HTTPS
+        samesite="lax", # Permite el envío de cookies en solicitudes cross-site con ciertas restricciones
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60 # Tiempo de expiración de la cookie
+    )
     
     return {
-        "access_token": access_token,
-        "token_type": "bearer",
+        "message": "Login exitoso",
         "roles": roles
     }
+
+@router.post("/logout")
+
+def logout(response: Response):
+    response.delete_cookie(
+        key="access_token", # Debe ser el mismo nombre que en el login
+        httponly=True,
+        secure=False, # En producción, usar True junto con SameSite=None y protocolo HTTPS
+        samesite="lax" # Permite el envío de cookies en solicitudes cross-site con ciertas restricciones
+    )
+    return {
+        "success": True
+    }
+
