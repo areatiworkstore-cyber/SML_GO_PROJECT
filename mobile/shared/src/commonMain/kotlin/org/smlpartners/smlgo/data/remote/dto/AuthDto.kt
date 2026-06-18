@@ -9,8 +9,12 @@ data class LoginRequestDto(
     @SerialName("password") val password: String
 )
 
+/**
+ * El backend ahora responde con una cookie HttpOnly y este body JSON.
+ * El access_token viaja en el header Set-Cookie, NO en el body.
+ */
 @Serializable
-data class TokenResponseDto(
-    @SerialName("access_token") val accessToken: String,
-    @SerialName("token_type")   val tokenType: String
-)
+data class LoginResponseDto(
+    @SerialName("message") val message: String = "",
+    @SerialName("roles")   val roles: List<String> = emptyList()
+)

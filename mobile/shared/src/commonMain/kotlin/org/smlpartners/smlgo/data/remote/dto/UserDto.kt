@@ -30,7 +30,8 @@ data class MyProfileDto(
     @SerialName("document_number")  val documentNumber  : String,
     @SerialName("cellphone")        val cellphone       : String,
     @SerialName("email")            val email           : String,
-    @SerialName("roles")            val roles           : List<RoleUserDto> = emptyList()
+    // El endpoint /users/me devuelve roles como List<String> (e.g. ["ADMIN", "VENDEDOR"])
+    @SerialName("roles")            val roles           : List<String> = emptyList()
 )
 
 @Serializable
