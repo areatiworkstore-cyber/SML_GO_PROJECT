@@ -16,18 +16,6 @@ import { apiClient } from '../../../services/api';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-interface RoleDetail {
-  id?: number;
-  role?: string;
-}
-
-interface RoleUserItem {
-  id: number;
-  user_id: number;
-  role_id: number;
-  role_details?: RoleDetail | null;
-}
-
 interface DocumentType {
   id?: number;
   document_type?: string;
@@ -45,7 +33,7 @@ interface UserProfile {
   cellphone: string;
   email: string;
   active: boolean;
-  roles: RoleUserItem[];
+  roles: string[];
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -58,10 +46,7 @@ function buildFullName(p: UserProfile): string {
 
 function getRoleLabel(p: UserProfile): string {
   if (!p.roles || p.roles.length === 0) return 'Sin rol asignado';
-  const names = p.roles
-    .map(r => r.role_details?.role)
-    .filter(Boolean) as string[];
-  return names.length > 0 ? names.join(', ') : 'Sin rol asignado';
+  return p.roles.join(' | ').replace('ADMIN', 'ADMINISTRADOR');
 }
 
 // ─── Fila de detalle ─────────────────────────────────────────────────────────
