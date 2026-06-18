@@ -11,10 +11,8 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useAuth } from '../context/AuthContext';
 import smlLogo from '../../../assets/sml_Go.png';
 
-interface TokenResponse {
-    access_token: string;
-    token_type: string;
-    roles: string[];
+interface LoginResponse {
+    message: string;
 }
 
 export const Login: React.FC = () => {
@@ -46,6 +44,7 @@ export const Login: React.FC = () => {
             const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
             const response = await fetch(`${baseUrl}/auth/login`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
@@ -62,10 +61,9 @@ export const Login: React.FC = () => {
                 throw new Error(errorData.detail || 'Código/Email o contraseña incorrectos.');
             }
 
-            const data = await response.json() as TokenResponse;
-            const userRole = data.roles && data.roles.length > 0 ? data.roles[0] : 'ADMIN';
+            await response.json() as LoginResponse;
 
-            login(data.access_token, userRole);
+            await login();
 
         } catch (err: any) {
             setError(err.message || 'Ocurrió un problema al intentar conectar con el servidor.');

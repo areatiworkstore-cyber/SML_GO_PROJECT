@@ -9,28 +9,27 @@ export interface UserSession {
     first_surname: string;
     second_surname?: string;
     email?: string;
-    role: string;
+    roles: string[];
     fullName: string;
 }
 
 interface AuthContextType {
     isAuthenticated: boolean;
     user: UserSession | null;
-    token: string | null;
-    login: (token: string, role: string) => Promise<void>;
-    logout: () => void;
+    login: () => Promise<void>;
+    logout: () => Promise<void>;
     loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState<UserSession | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
 
     // Función para obtener los datos actualizados del endpoint /users/me
-    const fetchUserData = async (role: string) => {
+    const fetchUserData = async () => {
         try {
             const data = await apiClient.get<{
                 id: number;
@@ -40,6 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 first_surname: string;
                 second_surname?: string;
                 email?: string;
+                roles: string[];
             }>('/users/me');
 
             // Construcción dinámica del nombre sin fallbacks estáticos en duro
@@ -47,7 +47,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             const fullUserSession: UserSession = {
                 ...data,
-                role,
                 fullName: calculatedName
             };
 
@@ -63,48 +62,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     useEffect(() => {
-        const handleUnauthorized = () => {
-            logout();
-        };
-        window.addEventListener('auth:unauthorized', handleUnauthorized);
 
-        const savedUser = localStorage.getItem('user');
-        const savedRoles = localStorage.getItem('user_roles');
+        const initializeAuth = async () => {
 
-        if (token && savedUser && savedRoles) {
-            setUser(JSON.parse(savedUser));
+            try {
+                await fetchUserData();
+                setIsAuthenticated(true);
+            } catch {
+
+                setIsAuthenticated(false);
+
+                localStorage.removeItem('user');
+            }
+
             setLoading(false);
-        } else if (token && savedRoles) {
-            const roles = JSON.parse(savedRoles);
-            fetchUserData(roles[0] || 'USER');
-        } else {
-            setLoading(false);
-        }
-
-        return () => {
-            window.removeEventListener('auth:unauthorized', handleUnauthorized);
         };
-    }, [token]);
 
-    const login = async (newToken: string, role: string) => {
-        localStorage.setItem('token', newToken);
-        localStorage.setItem('user_roles', JSON.stringify([role]));
-        setToken(newToken);
+        initializeAuth();
+
+    }, []);
+
+    const login = async () => {
+        setIsAuthenticated(true);
         setLoading(true);
-        await fetchUserData(role);
+        await fetchUserData();
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
+    const logout = async () => {
+        try {
+            await apiClient.post('/auth/logout');
+        } catch { }
+
         localStorage.removeItem('user');
-        localStorage.removeItem('user_roles');
-        setToken(null);
+
         setUser(null);
+        setIsAuthenticated(false);
         setLoading(false);
     };
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated: !!token, user, token, login, logout, loading }}>
+        <AuthContext.Provider value={{ isAuthenticated, user, login, logout, loading }}>
             {children}
         </AuthContext.Provider>
     );

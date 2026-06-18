@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import Box from '@mui/material/Box';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
@@ -16,10 +16,10 @@ import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import CircularProgress from '@mui/material/CircularProgress';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import SettingsIcon from '@mui/icons-material/Settings';
-import { lazy, Suspense } from 'react';
 
 import { getTheme, type ThemeMode } from './theme';
 import { AuthProvider, useAuth, Login, UserProfileModal } from './features/auth';
@@ -27,6 +27,14 @@ import { NotificationProvider } from './context/NotificationContext';
 import { ModuleLoader } from './components/ModuleLoader';
 
 import smlLogo from './assets/sml_Go.png';
+
+// ── Lazy imports a nivel de módulo (referencias estables, evitan re-mount en Suspense) ──
+const RouteItinerary  = lazy(() => import('./features/routes/components/RouteItinerary'));
+const ClientForm      = lazy(() => import('./features/clients/components/ClientForm'));
+const CustomerPortfolio = lazy(() => import('./features/clients/components/CustomerPortfolio'));
+const CustomerMap     = lazy(() => import('./features/clients/components/CustomerMap'));
+const SellerAudit     = lazy(() => import('./features/audit/components/SellerAudit'));
+const EmployeeList    = lazy(() => import('./features/employee/components/EmployeeList'));
 
 const drawerWidth = 260;
 
@@ -69,7 +77,7 @@ class ViewErrorBoundary extends React.Component<
 }
 
 function AppContent() {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, loading } = useAuth();
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   const [activeView, setActiveView] = useState<'agenda' | 'register' | 'portfolio' | 'audit' | 'employees' | 'map'>('agenda');
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -97,35 +105,33 @@ function AppContent() {
     setProfileModalOpen(true);
   };
 
-  const RouteItinerary = lazy(() =>
-    import('./features/routes/components/RouteItinerary')
-  );
-
-  const ClientForm = lazy(() =>
-    import('./features/clients/components/ClientForm')
-  );
-
-  const CustomerPortfolio = lazy(() =>
-    import('./features/clients/components/CustomerPortfolio')
-  );
-
-  const CustomerMap = lazy(() =>
-    import('./features/clients/components/CustomerMap')
-  );
-
-  const SellerAudit = lazy(() =>
-    import('./features/audit/components/SellerAudit')
-  );
-
-  const EmployeeList = lazy(() =>
-    import('./features/employee/components/EmployeeList')
-  );
-
   React.useEffect(() => {
-    if ((activeView === 'employees' || activeView === 'audit') && user?.role !== 'ADMINISTRADOR' && user?.role !== 'ADMIN') {
+    if ((activeView === 'employees' || activeView === 'audit') && !user?.roles.includes('ADMIN') && !user?.roles.includes('ADMINISTRADOR')) {
       setActiveView('agenda');
     }
   }, [activeView, user]);
+
+  // Mientras se verifica la cookie/sesión, mostrar spinner. Nunca mostrar Login si aún está cargando.
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          gap: 2,
+          backgroundColor: '#070f1a',
+        }}
+      >
+        <CircularProgress sx={{ color: '#F29200' }} size={48} />
+        <Typography sx={{ color: '#64748b', fontSize: '0.875rem' }}>
+          Verificando sesión...
+        </Typography>
+      </Box>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Login />;
@@ -141,8 +147,8 @@ function AppContent() {
   ] as const;
 
   const menuItems = baseMenuItems.filter(item => {
-    if (item.id === 'employees' && user?.role !== 'ADMINISTRADOR' && user?.role !== 'ADMIN') return false;
-    if (item.id === 'audit' && user?.role !== 'ADMINISTRADOR' && user?.role !== 'ADMIN') return false;
+    if (item.id === 'employees' && !user?.roles.includes('ADMIN') && !user?.roles.includes('ADMINISTRADOR')) return false;
+    if (item.id === 'audit' && !user?.roles.includes('ADMIN') && !user?.roles.includes('ADMINISTRADOR')) return false;
     return true;
   });
 
@@ -304,7 +310,7 @@ function AppContent() {
                     {user?.fullName || 'Cargando...'}
                   </div>
                   <div className="text-[10px] font-bold uppercase" style={{ color: '#64748b' }}>
-                    {user?.code} • {user?.role}
+                    {user?.code}
                   </div>
                 </div>
 
