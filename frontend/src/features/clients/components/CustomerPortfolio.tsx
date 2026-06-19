@@ -65,7 +65,7 @@ interface ImportResult {
 
 export const CustomerPortfolio: React.FC = () => {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'ADMINISTRADOR';
+  const isAdmin = user?.roles.includes('ADMIN') || user?.roles.includes('ADMINISTRADOR');
   const { showSuccess, showError, showConfirm } = useNotification();
 
   // --- IMPORT MODAL STATE ---
@@ -166,7 +166,7 @@ export const CustomerPortfolio: React.FC = () => {
         first_surname: user.first_surname,
         second_surname: user.second_surname || null,
         email: user.email || '',
-        role: user.role
+        role: user.roles.toString()
       };
       handleExplorePortfolio(myAdvisorData);
     }

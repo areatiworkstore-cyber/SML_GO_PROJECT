@@ -2,16 +2,32 @@ import { apiClient } from '../../services/api';
 import type { Employee } from './types';
 
 export const employeeService = {
+    /**
+     * Obtiene todos los usuarios (vendedores, administradores, etc.)
+     */
     getEmployees(skip: number = 0, limit: number = 100): Promise<Employee[]> {
         return apiClient.get<Employee[]>('/users/', {
             params: { skip, limit }
         });
     },
 
+    /**
+     * Obtiene todos los usuarios activos (vendedores, administradores, etc.)
+     */
+    getEmployeesActive(): Promise<Employee[]> {
+        return apiClient.get<Employee[]>('/users/active');
+    },
+
+    /**
+     * Crea un nuevo usuario (vendedor, administrador, etc.)
+     */
     createEmployee(employee: any): Promise<Employee> {
         return apiClient.post<Employee>('/users/', employee);
     },
 
+    /**
+     * Actualiza un usuario existente
+     */
     updateEmployee(id: number, employee: any): Promise<Employee> {
         return apiClient.put<Employee>(`/users/${id}`, employee);
     },

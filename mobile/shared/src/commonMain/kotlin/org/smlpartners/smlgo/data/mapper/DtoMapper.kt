@@ -7,8 +7,7 @@ import kotlinx.datetime.LocalDateTime
 import org.smlpartners.smlgo.data.remote.dto.*
 
 // ── Auth ─────────────────────────────────────────────────────────────────
-
-fun TokenResponseDto.toDomain(): String? = accessToken
+// (TokenResponseDto eliminado: el token ahora viaja en cookie Set-Cookie, no en body)
 
 // ── Master data ──────────────────────────────────────────────────────────
 
@@ -61,15 +60,16 @@ fun User.toUpdateDto(password: String? = null) = UserUpdateDto(
 fun MyProfileDto.toDomainUser() = User(
     id = id,
     code = code,
-    firstName = firstName ?: "User",
-    secondName = secondName ?: "",
-    firstSurname = firstSurname ?: "SML",
-    secondSurname = secondSurname ?: "",
+    firstName = firstName,
+    secondName = secondName,
+    firstSurname = firstSurname,
+    secondSurname = secondSurname,
     documentType = documentType?.toDomain(),
-    documentNumber = documentNumber ?: "",
-    cellphone = cellphone ?: "",
-    email = email ?: "",
-    roles = roles.map { it.toDomain() },
+    documentNumber = documentNumber,
+    cellphone = cellphone,
+    email = email,
+    // roles es List<String> desde /users/me — mapeamos solo el nombre
+    roles = roles.map { roleName -> Role(role = roleName) },
     active = true
 )
 

@@ -61,6 +61,7 @@ def read_route(
     roles = [ru.role_details.role for ru in current_user.roles]
     if "ADMIN" not in roles and route.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="No tienes permisos para realizar esta acción")
+        
     return route
 
 
@@ -91,7 +92,7 @@ def delete_route(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Elimina una ruta específica (Administrador o propietario de la ruta).
+    Elimina una ruta y todas sus paradas.
     """
     route = crud_route.get_route_by_id(db, route_id=route_id)
     if not route:
@@ -100,9 +101,10 @@ def delete_route(
     roles = [ru.role_details.role for ru in current_user.roles]
     if "ADMIN" not in roles and route.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="No tienes permisos para realizar esta acción")
-        
-    crud_route.delete_route(db, db_route=route)
-    return None
+    
+    success = crud_route.delete_route(db, db_route=route)
+    if not success:
+        raise HTTPException(status_code=400, detail="Error al eliminar la ruta")
 
 @router.put("/waypoints/{waypoint_id}", response_model=WaypointResponse)
 def update_waypoint_status(
@@ -117,7 +119,7 @@ def update_waypoint_status(
     """
     waypoint = crud_route.get_waypoint_by_id(db, waypoint_id=waypoint_id)
     if not waypoint:
-        raise HTTPException(status_code=404, detail="Waypoint not found")
+        raise HTTPException(status_code=404, detail="Parada no encontrada")
         
     # Check if waypoint belongs to a route owned by the current user
     route = crud_route.get_route_by_id(db, route_id=waypoint.route_id)

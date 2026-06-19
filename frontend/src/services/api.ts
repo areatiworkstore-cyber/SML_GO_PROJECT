@@ -32,15 +32,14 @@ async function executeRequest<T>(endpoint: string, options: FetchOptions = {}): 
   }
 
   // Default headers, including authorization token
-  const token = localStorage.getItem('token');
   const isFormData = restOptions.body instanceof FormData;
   const defaultHeaders: Record<string, string> = {
-    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' })
   };
 
   const config: RequestInit = {
     headers: { ...defaultHeaders, ...headers },
+    credentials: "include",
     ...restOptions,
   };
 
