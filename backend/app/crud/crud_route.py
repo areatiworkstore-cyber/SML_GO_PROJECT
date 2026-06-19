@@ -34,6 +34,11 @@ def update_route(db: Session, db_route: Route, route_in: RouteUpdate) -> Route:
     db.refresh(db_route)
     return db_route
 
+def delete_route(db: Session, db_route: Route) -> None:
+    db.delete(db_route)
+    db.commit()
+    return
+
 def get_waypoint_by_id(db: Session, waypoint_id: int):
     return db.query(Waypoint).filter(Waypoint.id == waypoint_id).first()
 
@@ -66,3 +71,8 @@ def create_waypoint(db: Session, route_id: int, wp_in: WaypointCreate) -> Waypoi
     db.commit()
     db.refresh(db_wp)
     return db_wp
+
+def delete_waypoint(db: Session, db_waypoint: Waypoint) -> None:
+    db.delete(db_waypoint)
+    db.commit()
+    return
