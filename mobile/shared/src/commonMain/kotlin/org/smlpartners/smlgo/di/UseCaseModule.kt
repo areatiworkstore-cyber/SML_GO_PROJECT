@@ -26,6 +26,8 @@ val useCaseModule = module {
     factory { GetClientsWithLocationUseCase(get()) }
     factory { CreateClientUseCase(get()) }
     factory { UpdateClientUseCase(get()) }
+    factory { DeleteClientUseCase(get()) }
+    factory { ActivateClientUseCase(get()) }
 
     // ── Route ─────────────────────────────────────────────────────────
     factory { GetRoutesUseCase(get()) }
@@ -38,6 +40,7 @@ val useCaseModule = module {
     // ── Waypoint ──────────────────────────────────────────────────────
     factory { CreateWaypointUseCase(get()) }
     factory { UpdateWaypointStatusUseCase(get()) }
+    factory { UploadWaypointPhotoUseCase(get()) }
 
     // ── Schedule ──────────────────────────────────────────────────────
     factory { GetSchedulesUseCase(get()) }

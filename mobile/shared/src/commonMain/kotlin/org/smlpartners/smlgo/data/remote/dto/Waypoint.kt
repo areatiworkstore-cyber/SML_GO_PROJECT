@@ -13,6 +13,7 @@ data class WaypointDto(
     @SerialName("client")           val client          : WaypointClientInfoDto?,
     @SerialName("status")           val status          : String,
     @SerialName("visited_at")       val visitedAt       : String?,
+    @SerialName("url_photo")        val urlPhoto        : String? = null,
     @SerialName("comment")          val comment         : String?
 )
 
@@ -24,6 +25,7 @@ data class WaypointCreateDto(
     @SerialName("order_sequence")   val orderSequence : Int,
     @SerialName("client_id")        val clientId      : Int,
     @SerialName("status")           val status        : String   = "PENDIENTE",
+    @SerialName("url_photo")        val urlPhoto      : String?  = null,
     @SerialName("comment")          val comment       : String?  = null
 )
 
@@ -31,6 +33,7 @@ data class WaypointCreateDto(
 data class WaypointUpdateDto(
     @SerialName("status")           val status        : String?  = null,
     @SerialName("visited_at")       val visitedAt     : String?  = null,
+    @SerialName("url_photo")        val urlPhoto      : String?  = null,
     @SerialName("comment")          val comment       : String?  = null,
     @SerialName("order_sequence")   val orderSequence : Int?     = null,
     @SerialName("address")          val address       : String?  = null,
@@ -41,5 +44,6 @@ data class WaypointUpdateDto(
 @Serializable
 data class WaypointStatusRequestDto(
     @SerialName("status")           val status          : String,
+    @SerialName("url_photo")        val urlPhoto        : String?  = null,
     @SerialName("comment")          val comment         : String?
 )

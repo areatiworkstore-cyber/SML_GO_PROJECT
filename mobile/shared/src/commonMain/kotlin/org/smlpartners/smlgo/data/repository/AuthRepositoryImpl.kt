@@ -36,12 +36,15 @@ class AuthRepositoryImpl(
 
             // Obtiene el perfil con el token explícito — solo esta vez
             val myProfile = api.getMe(token)
-            println("[AuthRepo] getMe response: id=${myProfile.id}, name=${myProfile.firstName}")
+            val firstName = myProfile.firstName ?: "Vendedor"
+            val surname   = myProfile.firstSurname ?: ""
+            
+            println("[AuthRepo] getMe response: id=${myProfile.id}, name=$firstName")
 
             secureStorage.saveUserSession(
                 id   = myProfile.id,
                 code = myProfile.code,
-                name = "${myProfile.firstName} ${myProfile.firstSurname}"
+                name = "$firstName $surname".trim()
             )
 
             _isLoggedInFlow.value = true
@@ -49,14 +52,14 @@ class AuthRepositoryImpl(
             Profile(
                 id             = myProfile.id,
                 code           = myProfile.code,
-                firstName      = myProfile.firstName,
-                secondName     = myProfile.secondName,
-                firstSurname   = myProfile.firstSurname,
-                secondSurname  = myProfile.secondSurname,
+                firstName      = firstName,
+                secondName     = myProfile.secondName ?: "",
+                firstSurname   = surname,
+                secondSurname  = myProfile.secondSurname ?: "",
                 documentType   = myProfile.documentType?.toDomain(),
-                documentNumber = myProfile.documentNumber,
-                cellphone      = myProfile.cellphone,
-                email          = myProfile.email,
+                documentNumber = myProfile.documentNumber ?: "",
+                cellphone      = myProfile.cellphone ?: "",
+                email          = myProfile.email ?: "",
                 roles          = myProfile.roles.map { it.toDomain() }
             )
         }

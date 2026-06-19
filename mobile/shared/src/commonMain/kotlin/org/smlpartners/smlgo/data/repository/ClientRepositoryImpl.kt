@@ -33,4 +33,10 @@ class ClientRepositoryImpl(
         }
     override suspend fun getNextCode(): ApiResult<NextCode> =
         safeApiCall { api.getNextCode().toDomain() }
+
+    override suspend fun deleteClient(id: Int): ApiResult<Unit> =
+        safeApiCall { api.deleteClient(id) }
+
+    override suspend fun activateClient(id: Int): ApiResult<Unit> =
+        safeApiCall { api.activateClient(id) }
 }

@@ -13,6 +13,7 @@ data class Waypoint(
     val clientName     : String?,
     val status         : WaypointStatus,
     val visitedAt      : LocalDateTime?,
+    val urlPhoto       : String?,
     val comment        : String?
 ) {
     val isPending   : Boolean get() = status == WaypointStatus.PENDIENTE

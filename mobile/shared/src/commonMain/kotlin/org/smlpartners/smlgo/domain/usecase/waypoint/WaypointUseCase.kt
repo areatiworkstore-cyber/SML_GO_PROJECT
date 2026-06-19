@@ -36,3 +36,23 @@ class UpdateWaypointStatusUseCase(private val repository: WaypointRepository) {
         )
     }
 }
+
+class UploadWaypointPhotoUseCase(private val repository: WaypointRepository) {
+    suspend operator fun invoke(
+        waypointId : Int,
+        imageBytes : ByteArray,
+        filename   : String
+    ): ApiResult<Waypoint> {
+        if (waypointId <= 0) return ApiResult.Error(
+            ApiError.UnknownError("ID de waypoint inválido")
+        )
+        if (imageBytes.isEmpty()) return ApiResult.Error(
+            ApiError.UnknownError("El archivo de imagen no puede estar vacío")
+        )
+        return repository.uploadWaypointPhoto(
+            waypointId = waypointId,
+            imageBytes = imageBytes,
+            filename   = filename
+        )
+    }
+}

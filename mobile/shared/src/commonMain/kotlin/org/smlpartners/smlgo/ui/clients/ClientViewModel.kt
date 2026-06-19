@@ -41,6 +41,8 @@ class ClientViewModel(
     private val getClientByIdUseCase      : GetClientByIdUseCase,
     private val createClientUseCase       : CreateClientUseCase,
     private val updateClientUseCase       : UpdateClientUseCase,
+    private val deleteClientUseCase       : DeleteClientUseCase,
+    private val activateClientUseCase     : ActivateClientUseCase,
     private val getClientFormMasterData   : GetClientFormMasterDataUseCase,
     private val getNextClientCodeUseCase: GetNextClientCodeUseCase,
     private val getDepartmentsUseCase     : GetDepartmentsUseCase,
@@ -125,8 +127,6 @@ class ClientViewModel(
             val clientDepartment = resolvedClient?.department
 
             if (clientDistrict != null && clientProvince != null) {
-                println("[ClientVM] Cargando ubigeo: dept=${clientDepartment?.id} prov=${clientProvince.id} dist=${clientDistrict.id}")
-
                 // Carga provincias del departamento
                 if (clientDepartment != null) {
                     when (val provResult = getProvincesUseCase(clientDepartment.id)) {
@@ -166,37 +166,6 @@ class ClientViewModel(
         }
     }
 
-    private fun loadProvincesAndDistrictsForEdit(district: District) {
-        viewModelScope.launch {
-            // Para obtener el departamento y cargar sus provincias, primero necesitamos la provincia
-            // Como en mobile Province tiene departmentId, podemos filtrar/cargar a partir de ahí
-            // Pero en KMP localmente podemos consultar el endpoint del backend.
-            // Para resolverlo de forma robusta, podemos cargar provincias del departamento si lo conocemos.
-            // district.provinceId nos da la provincia. Si la API de provincias requiere departmentId:
-            // Cargamos provincias. Como getProvinces necesita departmentId, y no tenemos el departmentId directamente en District,
-            // podemos cargar el listado si la provincia está mapeada.
-            // Veamos en GeographyRepository si getProvinces requiere departmentId. Sí: `repository.getProvinces(departmentId)`
-            // ¿Cómo sabemos el departmentId?
-            // En DtoMapper.kt, DistrictDto se mapea a District:
-            // fun DistrictDto.toDomain() = District(id = id, name = name, active = active, provinceId = provinceId)
-            // Y ProvinceDto.toDomain() = Province(id = id, name = name, active = active, departmentId = departmentId)
-            // El backend retorna el distrito con su relación completa de provincia y departamento al traer el cliente por ID?
-            // Sí, en backend el modelo Client tiene la relación a District, que pertenece a Province, que pertenece a Department.
-            // Pero el mapper móvil DtoMapper mapea DistrictDto directo.
-            // De todos modos, en la edición, si district no es nulo, podemos cargar distritos de esa provincia
-            val districtsRes = getDistrictsUseCase(district.provinceId)
-            if (districtsRes is ApiResult.Success) {
-                _formState.update { it.copy(districts = districtsRes.data) }
-            }
-            
-            // Y para provincias, si no tenemos el departmentId directamente, podemos consultar o buscar.
-            // Si el backend expone obtener provincia por ID o si podemos deducirlo.
-            // Una opción alternativa es cargar provincias del departamento del cliente.
-            // Asumamos que el backend nos devuelve province con su departmentId.
-            // Vamos a verificar cómo está mapeado District en el DTO móvil.
-        }
-    }
-
     fun loadProvinces(departmentId: Int) {
         viewModelScope.launch {
             _formState.update { it.copy(provinces = emptyList(), districts = emptyList()) }
@@ -226,10 +195,6 @@ class ClientViewModel(
     }
 
     fun saveClient(client: Client) {
-        println("[ClientVM] saveClient id=${client.id} name=${client.name}")
-        println("[ClientVM] district=${client.district?.id} district_name=${client.district?.name}")
-        println("[ClientVM] lat=${client.latitude} lng=${client.longitude}")
-        println("[ClientVM] active=${client.active}")
 
         viewModelScope.launch {
             _formState.update { it.copy(isLoading = true, error = null) }
@@ -276,18 +241,23 @@ class ClientViewModel(
 
     fun toggleClientActive(client: Client) {
         viewModelScope.launch {
-            val updated = client.copy(active = !client.active)
-            when (val result = updateClientUseCase(client.id, updated)) {
+            _listState.update { it.copy(isLoading = true) }
+
+            // Evaluamos si el cliente está activo para decidir el endpoint
+            val result = if (client.active) {
+                deleteClientUseCase(client.id)
+            } else {
+                activateClientUseCase(client.id)
+            }
+            when (result) {
                 is ApiResult.Success -> {
-                    _listState.update { state ->
-                        state.copy(
-                            clients = state.clients.map {
-                                if (it.id == client.id) result.data else it
-                            }
-                        )
-                    }
+                    loadClients()
                 }
-                is ApiResult.Error -> GlobalErrorHandler.emit(result.exception)
+                is ApiResult.Error -> {
+                    _listState.update { it.copy(isLoading = false) }
+                    GlobalErrorHandler.emit(result.exception)
+                }
+
             }
         }
     }

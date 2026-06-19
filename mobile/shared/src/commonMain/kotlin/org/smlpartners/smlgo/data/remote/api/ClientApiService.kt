@@ -44,4 +44,7 @@ class ClientApiService(private val manager: HttpClientManager) {
 
     suspend fun deleteClient(id: Int): Unit =
         client.delete("clients/$id").body()
+
+    suspend fun activateClient(id: Int): Unit =
+        client.put("clients/$id/activate").body()
 }

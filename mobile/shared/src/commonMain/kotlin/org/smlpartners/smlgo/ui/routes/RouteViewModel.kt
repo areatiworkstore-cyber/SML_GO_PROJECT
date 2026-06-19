@@ -22,6 +22,7 @@ import org.smlpartners.smlgo.domain.usecase.route.GetRoutesUseCase
 import org.smlpartners.smlgo.domain.usecase.route.WaypointInput
 import org.smlpartners.smlgo.domain.usecase.waypoint.CreateWaypointUseCase
 import org.smlpartners.smlgo.domain.usecase.waypoint.UpdateWaypointStatusUseCase
+import org.smlpartners.smlgo.domain.usecase.waypoint.UploadWaypointPhotoUseCase
 
 data class RouteListUiState(
     val isLoading : Boolean      = true,
@@ -49,7 +50,8 @@ class RouteViewModel(
     private val deleteRouteUseCase                : DeleteRouteUseCase,
     private val getClientsUseCase                 : GetClientsUseCase,
     private val createWaypointUseCase             : CreateWaypointUseCase,
-    private val updateWaypointStatusUseCase       : UpdateWaypointStatusUseCase
+    private val updateWaypointStatusUseCase       : UpdateWaypointStatusUseCase,
+    private val uploadWaypointPhotoUseCase        : UploadWaypointPhotoUseCase
 ) : ViewModel() {
 
     private val _listState   = MutableStateFlow(RouteListUiState())
@@ -205,6 +207,36 @@ class RouteViewModel(
                             "No se pudo eliminar la ruta"
                         )
                     )
+                }
+            }
+        }
+    }
+
+    fun uploadWaypointPhoto(
+        waypointId : Int,
+        imageBytes : ByteArray,
+        filename   : String,
+        onComplete : () -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _detailState.update { it.copy(isLoading = true) }
+            when (val result = uploadWaypointPhotoUseCase(waypointId, imageBytes, filename)) {
+                is ApiResult.Success -> {
+                    _detailState.update { state ->
+                        state.copy(
+                            isLoading = false,
+                            route     = state.route?.copy(
+                                waypoints = state.route.waypoints.map { w ->
+                                    if (w.id == waypointId) result.data else w
+                                }
+                            )
+                        )
+                    }
+                    onComplete()
+                }
+                is ApiResult.Error -> {
+                    GlobalErrorHandler.emit(result.exception)
+                    _detailState.update { it.copy(isLoading = false) }
                 }
             }
         }

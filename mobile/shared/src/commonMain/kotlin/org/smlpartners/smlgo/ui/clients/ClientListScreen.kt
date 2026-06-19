@@ -3,6 +3,7 @@ package org.smlpartners.smlgo.ui.clients
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,7 +32,7 @@ import org.smlpartners.smlgo.ui.shared.theme.*
 @Composable
 fun ClientListScreen(
     onNavigateToForm : (Int?) -> Unit,
-    onBack           : () -> Unit
+    onBack            : () -> Unit
 ) {
     val viewModel  : ClientViewModel = koinViewModel()
     val uiState    by viewModel.listState.collectAsState()
@@ -84,11 +85,11 @@ fun ClientListScreen(
                             start  = 16.dp,
                             end    = 16.dp,
                             top    = 12.dp,
-                            bottom = 88.dp   // ← espacio para el FAB
+                            bottom = 88.dp   // ? espacio para el FAB
                         ),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // ── Contador ──────────────────────────────────
+                        // ── Contador ─────────────────────────────────────
                         item {
                             Text(
                                 text  = "${uiState.clients.size} clientes registrados",
@@ -115,7 +116,7 @@ fun ClientListScreen(
     }
 }
 
-// ── Card de cliente ───────────────────────────────────────────────────────
+// ── Card de cliente ─────────────────────────────────────
 
 @Composable
 private fun ClientCard(
@@ -132,9 +133,16 @@ private fun ClientCard(
             containerColor = if (client.active)
                 MaterialTheme.colorScheme.surface
             else
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f) // Reducido para evitar el gris sucio
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        // DISEÑO MODIFICADO: Añade borde sutil de inhabilitado solo al estar Inactivo
+        border = if (client.active) null else BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (client.active) 2.dp else 0.dp // Remueve la sombra si está inactivo
+        )
     ) {
         Row(
             modifier          = Modifier
@@ -142,7 +150,7 @@ private fun ClientCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // ── Avatar con inicial ────────────────────────────────────
+            // ── Avatar con inicial ─────────────────────────────────────
             ClientAvatar(
                 name     = client.name,
                 isActive = client.active
@@ -170,13 +178,14 @@ private fun ClientCard(
                     if (!client.active) {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.errorContainer
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
                         ) {
                             Text(
                                 text     = "Inactivo",
                                 style    = MaterialTheme.typography.labelSmall,
                                 color    = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -213,7 +222,7 @@ private fun ClientCard(
                         )
                         Spacer(Modifier.width(2.dp))
                         Text(
-                            text  = client.cellphone,
+                            text   = client.cellphone,
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary
                         )
@@ -227,14 +236,14 @@ private fun ClientCard(
                         InfoChip(
                             icon  = Icons.Filled.MyLocation,
                             label = "GPS",
-                            color = Success
+                            color = if (client.active) Success else TextMuted
                         )
                     }
                     if (!client.code.isNullOrBlank()) {
                         InfoChip(
                             icon  = Icons.Filled.Tag,
                             label = client.code,
-                            color = Primary
+                            color = if (client.active) Primary else TextMuted
                         )
                     }
                 }
@@ -242,18 +251,18 @@ private fun ClientCard(
 
             Spacer(Modifier.width(4.dp))
 
-            // ── Acciones ──────────────────────────────────────────────
+            // ── Acciones ─────────────────────────────────────
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Botón editar
+                // Botn editar
                 FilledIconButton(
                     onClick = onEdit,
                     modifier = Modifier.size(36.dp),
                     colors   = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = Primary.copy(alpha = 0.12f),
-                        contentColor   = Primary
+                        containerColor = if (client.active) Primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
+                        contentColor   = if (client.active) Primary else TextMuted
                     )
                 ) {
                     Icon(
@@ -263,7 +272,7 @@ private fun ClientCard(
                     )
                 }
 
-                // Botón activar/desactivar
+                // Botn activar/desactivar
                 FilledIconButton(
                     onClick  = { showToggleDialog = true },
                     modifier = Modifier.size(36.dp),
@@ -291,7 +300,7 @@ private fun ClientCard(
         }
     }
 
-    // ── Diálogo confirmar toggle ──────────────────────────────────────────
+    // ── Dilogo confirmar toggle ─────────────────────────────────────
     if (showToggleDialog) {
         AlertDialog(
             onDismissRequest = { showToggleDialog = false },
@@ -310,9 +319,9 @@ private fun ClientCard(
             text  = {
                 Text(
                     if (client.active)
-                        "¿Desactivar a ${client.name ?: "este cliente"}? No aparecerá en rutas nuevas."
+                        "Desactivar a ${client.name ?: "este cliente"}? No aparecer en rutas nuevas."
                     else
-                        "¿Activar a ${client.name ?: "este cliente"}?"
+                        "Activar a ${client.name ?: "este cliente"}?"
                 )
             },
             confirmButton = {
@@ -337,13 +346,13 @@ private fun ClientCard(
     }
 }
 
-// ── Avatar circular con inicial ───────────────────────────────────────────
+// ── Avatar circular con inicial ─────────────────────────────────────
 
 @Composable
 private fun ClientAvatar(name: String?, isActive: Boolean) {
     val initial = name?.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
     val bgColor = if (isActive) Primary.copy(alpha = 0.15f)
-    else MaterialTheme.colorScheme.surfaceVariant
+    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
 
     Box(
         modifier         = Modifier
@@ -361,7 +370,7 @@ private fun ClientAvatar(name: String?, isActive: Boolean) {
     }
 }
 
-// ── Chip de información ───────────────────────────────────────────────────
+// ── Chip de informacin ─────────────────────────────────────
 
 @Composable
 private fun InfoChip(
@@ -394,7 +403,7 @@ private fun InfoChip(
     }
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────
+// ── Empty state ──────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun EmptyClients(onAdd: () -> Unit) {
@@ -419,13 +428,13 @@ private fun EmptyClients(onAdd: () -> Unit) {
         }
         Spacer(Modifier.height(16.dp))
         Text(
-            text  = "Sin clientes aún",
+            text  = "Sin clientes an",
             style = MaterialTheme.typography.titleMedium,
             color = TextPrimary
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text  = "Registra tu primer cliente\ntocando el botón de abajo",
+            text  = "Registra tu primer cliente\ntocando el botn de abajo",
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center

@@ -34,4 +34,17 @@ class WaypointRepositoryImpl(
                 )
             ).toDomain()
         }
+
+    override suspend fun uploadWaypointPhoto(
+        waypointId: Int,
+        imageBytes: ByteArray,
+        filename: String
+    ): ApiResult<Waypoint> =
+        safeApiCall {
+            api.uploadWaypointPhoto(
+                waypointId = waypointId,
+                imageBytes = imageBytes,
+                filename = filename
+            ).toDomain()
+        }
 }

@@ -10,6 +10,11 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
+
 import org.smlpartners.smlgo.core.network.HttpClientManager
 
 class WaypointApiService(private val manager: HttpClientManager) {
@@ -28,5 +33,21 @@ class WaypointApiService(private val manager: HttpClientManager) {
         client.put("routes/waypoints/$waypointId") {
             contentType(ContentType.Application.Json)
             setBody(request)
+        }.body()
+
+    suspend fun uploadWaypointPhoto(
+        waypointId: Int,
+        imageBytes: ByteArray,
+        filename: String
+    ): WaypointDto =
+        client.post("routes/waypoints/$waypointId/upload-photo") {
+            setBody(MultiPartFormDataContent(
+                formData {
+                    append("file", imageBytes, Headers.build {
+                        append(HttpHeaders.ContentType, "image/jpeg")
+                        append(HttpHeaders.ContentDisposition, "filename=\"$filename\"")
+                    })
+                }
+            ))
         }.body()
 }

@@ -43,7 +43,7 @@ fun ProfileEditScreen(
     var secondName     by remember { mutableStateOf("") }
     var firstSurname   by remember { mutableStateOf("") }
     var secondSurname  by remember { mutableStateOf("") }
-    var cellphone      by remember { mutableStateOf("") }
+    var cellphone: String? by remember { mutableStateOf("") }
     var email          by remember { mutableStateOf("") }
     var password       by remember { mutableStateOf("") }
     var documentNumber by remember { mutableStateOf("") }
@@ -165,7 +165,7 @@ fun ProfileEditScreen(
             )
 
             SMLGoTextField(
-                value           = cellphone,
+                value           = cellphone ?: "No registrado",
                 onValueChange   = { cellphone = it },
                 label           = "Celular",
                 keyboardOptions = KeyboardOptions(

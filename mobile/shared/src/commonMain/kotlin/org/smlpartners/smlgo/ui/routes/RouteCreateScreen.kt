@@ -18,6 +18,7 @@ import org.smlpartners.smlgo.ui.shared.theme.Radius
 import org.smlpartners.smlgo.ui.shared.theme.Spacing
 import org.smlpartners.smlgo.ui.shared.theme.Success
 import org.smlpartners.smlgo.core.utils.today
+import org.smlpartners.smlgo.ui.shared.theme.TextPrimary
 
 @Composable
 fun RouteCreateScreen(
@@ -68,7 +69,7 @@ fun RouteCreateScreen(
                     ) {
                         Icon(Icons.Filled.CalendarMonth, contentDescription = null)
                         Spacer(Modifier.width(Spacing.sm))
-                        Text("Fecha: $scheduledDate")
+                        Text(text = "Fecha: $scheduledDate", color = TextPrimary)
                     }
                 }
 

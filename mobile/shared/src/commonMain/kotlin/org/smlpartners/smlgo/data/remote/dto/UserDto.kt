@@ -7,13 +7,13 @@ import kotlinx.serialization.Serializable
 data class UserDto(
     @SerialName("id")               val id              : Int,
     @SerialName("code")             val code            : String,
-    @SerialName("first_name")       val firstName       : String?,
-    @SerialName("second_name")      val secondName      : String?,
-    @SerialName("first_surname")    val firstSurname    : String?,
-    @SerialName("second_surname")   val secondSurname   : String?,
-    @SerialName("document_type")    val documentType    : DocumentTypeDto?,
+    @SerialName("first_name")       val firstName       : String? = null,
+    @SerialName("second_name")      val secondName      : String? = null,
+    @SerialName("first_surname")    val firstSurname    : String? = null,
+    @SerialName("second_surname")   val secondSurname   : String? = null,
+    @SerialName("document_type")    val documentType    : DocumentTypeDto? = null,
     @SerialName("document_number")  val documentNumber  : String,
-    @SerialName("cellphone")        val cellphone       : String,
+    @SerialName("cellphone")        val cellphone       : String? = null,
     @SerialName("email")            val email           : String,
     @SerialName("roles")            val roles           : List<RoleUserDto> = emptyList()
 )
@@ -22,14 +22,14 @@ data class UserDto(
 data class MyProfileDto(
     @SerialName("id")               val id              : Int,
     @SerialName("code")             val code            : String,
-    @SerialName("first_name")       val firstName       : String,
-    @SerialName("second_name")      val secondName      : String,
-    @SerialName("first_surname")    val firstSurname    : String,
-    @SerialName("second_surname")   val secondSurname   : String,
-    @SerialName("document_type")    val documentType    : DocumentTypeDto?,
-    @SerialName("document_number")  val documentNumber  : String,
-    @SerialName("cellphone")        val cellphone       : String,
-    @SerialName("email")            val email           : String,
+    @SerialName("first_name")       val firstName       : String? = null,
+    @SerialName("second_name")      val secondName      : String? = null,
+    @SerialName("first_surname")    val firstSurname    : String? = null,
+    @SerialName("second_surname")   val secondSurname   : String? = null,
+    @SerialName("document_type")    val documentType    : DocumentTypeDto? = null,
+    @SerialName("document_number")  val documentNumber  : String? = null,
+    @SerialName("cellphone")        val cellphone       : String? = null,
+    @SerialName("email")            val email           : String? = null,
     @SerialName("roles")            val roles           : List<RoleUserDto> = emptyList()
 )
 

@@ -11,4 +11,6 @@ interface ClientRepository {
     suspend fun updateClient(id: Int, client: Client): ApiResult<Client>
     suspend fun getClientsWithLocation(): ApiResult<List<Client>>
     suspend fun getNextCode(): ApiResult<NextCode>
+    suspend fun deleteClient(id: Int): ApiResult<Unit>
+    suspend fun activateClient(id: Int): ApiResult<Unit>
 }

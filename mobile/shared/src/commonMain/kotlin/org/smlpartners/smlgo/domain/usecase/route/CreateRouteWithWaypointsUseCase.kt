@@ -48,6 +48,7 @@ class CreateRouteWithWaypointsUseCase(
                     clientName    = input.client.name,
                     status        = WaypointStatus.PENDIENTE,
                     visitedAt     = null,
+                    urlPhoto      = null,
                     comment       = null
                 )
             )

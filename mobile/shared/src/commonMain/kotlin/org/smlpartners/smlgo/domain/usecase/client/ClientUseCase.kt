@@ -41,6 +41,16 @@ class UpdateClientUseCase(private val repository: ClientRepository) {
     }
 }
 
+class DeleteClientUseCase(private val repository: ClientRepository) {
+    suspend operator fun invoke(id: Int): ApiResult<Unit> =
+        repository.deleteClient(id)
+}
+
+class ActivateClientUseCase(private val repository: ClientRepository) {
+    suspend operator fun invoke(id: Int): ApiResult<Unit> =
+        repository.activateClient(id)
+}
+
 class GetNextClientCodeUseCase(private val repository: ClientRepository) {
     suspend operator fun invoke(): ApiResult<NextCode> =
         repository.getNextCode()
