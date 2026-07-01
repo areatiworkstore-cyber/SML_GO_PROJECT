@@ -44,6 +44,7 @@ data class ClientRequestDto(
     @SerialName("latitud")              val latitude        : Double?,
     @SerialName("longitud")             val longitude       : Double?,
     @SerialName("observation")          val observation     : String?,
+    @SerialName("user_id")              val userId          : Int? = null
 )
 
 @Serializable

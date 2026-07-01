@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiClient } from '../../../services/api'; // Ajusta la ruta si es necesario hacia tu api.ts
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { apiClient } from '../../../services/api';
+
+// ── Tipos ──────────────────────────────────────────────────────────────────────
 
 export interface UserSession {
     id: number;
@@ -21,80 +23,122 @@ interface AuthContextType {
     loading: boolean;
 }
 
+// ── Clave de caché en sessionStorage ──────────────────────────────────────────
+// sessionStorage se borra al cerrar la pestaña → comportamiento correcto para sesiones.
+// NO almacena el token (está en la cookie HttpOnly del backend).
+const SESSION_CACHE_KEY = 'sml_session';
+
+function readSessionCache(): UserSession | null {
+    try {
+        const raw = sessionStorage.getItem(SESSION_CACHE_KEY);
+        return raw ? (JSON.parse(raw) as UserSession) : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeSessionCache(session: UserSession) {
+    sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(session));
+}
+
+function clearSessionCache() {
+    sessionStorage.removeItem(SESSION_CACHE_KEY);
+    // Limpiar también cualquier residuo de la implementación anterior
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user_roles');
+}
+
+// ── Tipo interno del backend /users/me ─────────────────────────────────────────
+interface MeResponse {
+    id: number;
+    code: string;
+    first_name: string;
+    second_name?: string;
+    first_surname: string;
+    second_surname?: string;
+    email?: string;
+    roles: string[];
+}
+
+// ── Context ────────────────────────────────────────────────────────────────────
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [user, setUser] = useState<UserSession | null>(null);
-    const [loading, setLoading] = useState<boolean>(true);
+    // Si hay caché, arrancamos con los datos ya disponibles (sin flicker)
+    const [user, setUser] = useState<UserSession | null>(readSessionCache);
+    const [isAuthenticated, setIsAuthenticated] = useState(() => readSessionCache() !== null);
+    // loading=true solo si hay caché que necesita validarse contra el backend
+    const [loading, setLoading] = useState<boolean>(() => readSessionCache() !== null);
+    const initRan = useRef(false);
 
-    // Función para obtener los datos actualizados del endpoint /users/me
-    const fetchUserData = async () => {
+    // ── Construye UserSession a partir de la respuesta del backend ─────────────
+    function buildSession(data: MeResponse): UserSession {
+        return {
+            ...data,
+            fullName: `${data.first_name} ${data.first_surname}`.trim(),
+        };
+    }
+
+    // ── Obtiene el perfil del usuario desde /users/me y actualiza estado ───────
+    // silent=true durante la verificación inicial para suprimir el evento
+    // auth:unauthorized y evitar bucles y errores en consola.
+    async function fetchUserData(silent = false) {
+        const headers: Record<string, string> = silent
+            ? { 'x-silent-auth-check': '1' }
+            : {};
+
+        const data = await apiClient.get<MeResponse>('/users/me', { headers });
+        const session = buildSession(data);
+        writeSessionCache(session);
+        setUser(session);
+        setIsAuthenticated(true);
+    }
+
+    // ── Verificación inicial al montar la app ──────────────────────────────────
+    // Patrón SPA correcto:
+    // - Sin caché → Login inmediato, 0 peticiones al backend.
+    // - Con caché → validación silenciosa para comprobar que la cookie sigue activa.
+    useEffect(() => {
+        if (initRan.current) return;
+        initRan.current = true;
+
+        if (!readSessionCache()) {
+            // No hay indicios de sesión: renderizar Login sin spinner, sin red.
+            setLoading(false);
+            return;
+        }
+
+        fetchUserData(true)
+            .catch(() => {
+                // Cookie expirada o inválida → limpiar sin ruido
+                clearSessionCache();
+                setUser(null);
+                setIsAuthenticated(false);
+            })
+            .finally(() => setLoading(false));
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // ── login: llamado por el componente Login tras POST /auth/login exitoso ───
+    const login = async () => {
+        setLoading(true);
         try {
-            const data = await apiClient.get<{
-                id: number;
-                code: string;
-                first_name: string;
-                second_name?: string;
-                first_surname: string;
-                second_surname?: string;
-                email?: string;
-                roles: string[];
-            }>('/users/me');
-
-            // Construcción dinámica del nombre sin fallbacks estáticos en duro
-            const calculatedName = `${data.first_name} ${data.first_surname}`.trim();
-
-            const fullUserSession: UserSession = {
-                ...data,
-                fullName: calculatedName
-            };
-
-            localStorage.setItem('user', JSON.stringify(fullUserSession));
-            setUser(fullUserSession);
-        } catch (error) {
-            console.error('Error obteniendo perfil desde /users/me:', error);
-            // Si el token expiró o falló la API, forzamos logout preventivo
-            logout();
+            await fetchUserData(false);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-
-        const initializeAuth = async () => {
-
-            try {
-                await fetchUserData();
-                setIsAuthenticated(true);
-            } catch {
-
-                setIsAuthenticated(false);
-
-                localStorage.removeItem('user');
-            }
-
-            setLoading(false);
-        };
-
-        initializeAuth();
-
-    }, []);
-
-    const login = async () => {
-        setIsAuthenticated(true);
-        setLoading(true);
-        await fetchUserData();
-    };
-
+    // ── logout ─────────────────────────────────────────────────────────────────
     const logout = async () => {
         try {
             await apiClient.post('/auth/logout');
-        } catch { }
+        } catch { /* ignorar errores de red en logout */ }
 
-        localStorage.removeItem('user');
-
+        clearSessionCache();
         setUser(null);
         setIsAuthenticated(false);
         setLoading(false);

@@ -9,8 +9,6 @@ interface FetchOptions extends RequestInit {
   params?: Record<string, string | number | boolean>;
 }
 
-// 1. Extraemos la función request como una función pura y tipada de forma aislada.
-// Esto evita que TypeScript se confunda con la palabra clave 'this' dentro del objeto.
 async function executeRequest<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
   const { params, headers, ...restOptions } = options;
 
@@ -31,26 +29,35 @@ async function executeRequest<T>(endpoint: string, options: FetchOptions = {}): 
     url += `?${searchParams.toString()}`;
   }
 
-  // Default headers, including authorization token
+  // Detectar si es una verificación silenciosa de sesión inicial.
+  // Este header es SOLO interno — no se envía al backend.
+  const isSilentAuthCheck = !!(headers as Record<string, string>)?.['x-silent-auth-check'];
+
+  // Default headers — el header interno se excluye del request real
   const isFormData = restOptions.body instanceof FormData;
+  const { 'x-silent-auth-check': _silent, ...cleanHeaders } = (headers ?? {}) as Record<string, string>;
   const defaultHeaders: Record<string, string> = {
-    ...(isFormData ? {} : { 'Content-Type': 'application/json' })
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    ...cleanHeaders,
   };
 
   const config: RequestInit = {
-    headers: { ...defaultHeaders, ...headers },
-    credentials: "include",
+    headers: defaultHeaders,
+    credentials: 'include',
     ...restOptions,
   };
 
   const response = await fetch(url, config);
 
   if (response.status === 401) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('user_roles');
-
-    window.dispatchEvent(new Event('auth:unauthorized'));
+    // Solo limpiar storage y disparar evento global cuando NO es una verificación silenciosa.
+    // En la verificación silenciosa (al iniciar la app), el caller maneja el error sin ruido.
+    if (!isSilentAuthCheck) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('user_roles');
+      window.dispatchEvent(new Event('auth:unauthorized'));
+    }
     throw new Error('Sesión expirada o no autorizada.');
   }
 
@@ -66,6 +73,7 @@ async function executeRequest<T>(endpoint: string, options: FetchOptions = {}): 
 
   return response.json() as Promise<T>;
 }
+
 
 // 2. Exportamos el objeto manteniendo exactamente tu interfaz pública original.
 // Al llamar a 'executeRequest<T>' de forma directa, el compilador jamás volverá a dar el error "Untyped function calls...".

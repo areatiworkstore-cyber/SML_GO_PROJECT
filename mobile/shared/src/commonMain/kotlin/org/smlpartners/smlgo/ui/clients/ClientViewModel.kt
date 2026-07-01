@@ -7,6 +7,8 @@ import org.smlpartners.smlgo.domain.model.*
 import org.smlpartners.smlgo.domain.usecase.client.*
 import org.smlpartners.smlgo.domain.usecase.masterdata.GetClientFormMasterDataUseCase
 import org.smlpartners.smlgo.domain.usecase.geography.*
+import org.smlpartners.smlgo.domain.usecase.auth.GetActiveUsersUseCase
+import org.smlpartners.smlgo.domain.usecase.auth.GetFullUserUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +21,10 @@ import org.smlpartners.smlgo.core.error.toAppError
 data class ClientListUiState(
     val isLoading : Boolean       = true,
     val clients   : List<Client>  = emptyList(),
+    val isAdmin   : Boolean       = false,
+    val employees : List<User>    = emptyList(),
+    val selectedEmployee: User?   = null,
+    val isLoadingEmployees: Boolean = false
 )
 
 data class ClientFormUiState(
@@ -47,7 +53,9 @@ class ClientViewModel(
     private val getNextClientCodeUseCase: GetNextClientCodeUseCase,
     private val getDepartmentsUseCase     : GetDepartmentsUseCase,
     private val getProvincesUseCase       : GetProvincesUseCase,
-    private val getDistrictsUseCase       : GetDistrictsUseCase
+    private val getDistrictsUseCase       : GetDistrictsUseCase,
+    private val getActiveUsersUseCase     : GetActiveUsersUseCase,
+    private val getFullUserUseCase        : GetFullUserUseCase
 ) : ViewModel() {
 
     private val _listState = MutableStateFlow(ClientListUiState())
@@ -57,11 +65,63 @@ class ClientViewModel(
     val formState: StateFlow<ClientFormUiState> = _formState.asStateFlow()
 
     // ── Lista ─────────────────────────────────────────────────────────
-
-    fun loadClients() {
+    
+    fun checkUserRoleAndLoadData() {
         viewModelScope.launch {
             _listState.update { it.copy(isLoading = true) }
-            when (val result = getClientsUseCase()) {
+            when (val userResult = getFullUserUseCase()) {
+                is ApiResult.Success -> {
+                    val user = userResult.data
+                    val isAdmin = user.roles.any { it.role.uppercase() == "ADMIN" || it.role.uppercase() == "ADMINISTRADOR" }
+                    _listState.update { it.copy(isAdmin = isAdmin) }
+                    if (isAdmin) {
+                        loadEmployees()
+                    } else {
+                        loadClients()
+                    }
+                }
+                is ApiResult.Error -> {
+                    // Fallback a flujo normal si falla la verificación de rol
+                    loadClients()
+                }
+            }
+        }
+    }
+
+    fun loadEmployees() {
+        viewModelScope.launch {
+            _listState.update { it.copy(isLoadingEmployees = true, isLoading = false) }
+            when (val result = getActiveUsersUseCase()) {
+                is ApiResult.Success -> {
+                    _listState.update {
+                        it.copy(
+                            isLoadingEmployees = false,
+                            employees = result.data.filter { emp -> emp.active }
+                        )
+                    }
+                }
+                is ApiResult.Error -> {
+                    GlobalErrorHandler.emit(result.exception)
+                    _listState.update { it.copy(isLoadingEmployees = false) }
+                }
+            }
+        }
+    }
+
+    fun selectEmployee(employee: User?) {
+        _listState.update { it.copy(selectedEmployee = employee) }
+        if (employee != null) {
+            loadClients(employee.id)
+        } else {
+            _listState.update { it.copy(clients = emptyList()) }
+        }
+    }
+
+    fun loadClients(userId: Int? = null) {
+        viewModelScope.launch {
+            _listState.update { it.copy(isLoading = true) }
+            val targetUserId = userId ?: _listState.value.selectedEmployee?.id
+            when (val result = getClientsUseCase(targetUserId)) {
                 is ApiResult.Success -> _listState.update {
                     it.copy(isLoading = false, clients = result.data)
                 }
@@ -195,12 +255,16 @@ class ClientViewModel(
     }
 
     fun saveClient(client: Client) {
-
         viewModelScope.launch {
             _formState.update { it.copy(isLoading = true, error = null) }
             val result = if (client.id == 0) {
-                println("[ClientVM] Creando nuevo cliente")
-                createClientUseCase(client)
+                val clientWithUser = if (_listState.value.isAdmin && _listState.value.selectedEmployee != null) {
+                    client.copy(userId = _listState.value.selectedEmployee?.id)
+                } else {
+                    client
+                }
+                println("[ClientVM] Creando nuevo cliente con user_id=${clientWithUser.userId}")
+                createClientUseCase(clientWithUser)
             } else {
                 println("[ClientVM] Actualizando cliente id=${client.id}")
                 updateClientUseCase(client.id, client)

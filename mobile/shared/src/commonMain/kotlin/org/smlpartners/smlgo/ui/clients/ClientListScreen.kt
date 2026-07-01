@@ -29,6 +29,9 @@ import org.smlpartners.smlgo.ui.shared.components.LoadingOverlay
 import org.smlpartners.smlgo.ui.shared.components.SMLGoTopBar
 import org.smlpartners.smlgo.ui.shared.theme.*
 
+import androidx.compose.foundation.clickable
+import org.smlpartners.smlgo.domain.model.User
+
 @Composable
 fun ClientListScreen(
     onNavigateToForm : (Int?) -> Unit,
@@ -38,19 +41,32 @@ fun ClientListScreen(
     val uiState    by viewModel.listState.collectAsState()
     val listState  = rememberLazyListState()
 
-    // Oculta el FAB cuando el usuario hace scroll hacia abajo
+    var searchQuery by remember { mutableStateOf("") }
+
+    // Oculta el FAB cuando el usuario hace scroll hacia abajo o cuando no se ha seleccionado vendedor
     val showFab by remember {
-        derivedStateOf { listState.firstVisibleItemIndex == 0 }
+        derivedStateOf { 
+            listState.firstVisibleItemIndex == 0 && (!uiState.isAdmin || uiState.selectedEmployee != null) 
+        }
     }
 
     LaunchedEffect(Unit) {
         viewModel.resetList()
-        viewModel.loadClients()
+        viewModel.checkUserRoleAndLoadData()
     }
 
     Scaffold(
         topBar = {
-            SMLGoTopBar(title = "Clientes", onBack = onBack)
+            SMLGoTopBar(
+                title = if (uiState.isAdmin && uiState.selectedEmployee == null) "Vendedores" else "Clientes", 
+                onBack = {
+                    if (uiState.isAdmin && uiState.selectedEmployee != null) {
+                        viewModel.selectEmployee(null)
+                    } else {
+                        onBack()
+                    }
+                }
+            )
         },
         floatingActionButton = {
             AnimatedVisibility(
@@ -74,40 +90,235 @@ fun ClientListScreen(
                 .padding(padding)
         ) {
             when {
-                uiState.isLoading         -> LoadingOverlay()
-                uiState.clients.isEmpty() -> EmptyClients(
-                    onAdd = { onNavigateToForm(null) }
-                )
-                else -> {
-                    LazyColumn(
-                        state               = listState,
-                        contentPadding      = PaddingValues(
-                            start  = 16.dp,
-                            end    = 16.dp,
-                            top    = 12.dp,
-                            bottom = 88.dp   // ? espacio para el FAB
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                uiState.isLoading -> LoadingOverlay()
+                
+                uiState.isAdmin && uiState.selectedEmployee == null -> {
+                    // ── VISTA DE TRABAJADORES (ADMIN) ──
+                    val filteredEmployees = remember(searchQuery, uiState.employees) {
+                        uiState.employees.filter {
+                            it.firstName.contains(searchQuery, ignoreCase = true) ||
+                            it.firstSurname.contains(searchQuery, ignoreCase = true) ||
+                            it.code.contains(searchQuery, ignoreCase = true)
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
                     ) {
-                        // ── Contador ─────────────────────────────────────
-                        item {
-                            Text(
-                                text  = "${uiState.clients.size} clientes registrados",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary,
-                                modifier = Modifier.padding(bottom = 4.dp)
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Buscar por código o nombre...") },
+                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = TextMuted) },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Filled.Clear, contentDescription = "Limpiar")
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                             )
+                        )
+
+                        if (uiState.isLoadingEmployees) {
+                            Box(
+                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = Primary)
+                            }
+                        } else if (filteredEmployees.isEmpty()) {
+                            Box(
+                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No se encontraron vendedores",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextSecondary
+                                )
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                contentPadding = PaddingValues(bottom = 16.dp)
+                            ) {
+                                items(
+                                    items = filteredEmployees,
+                                    key = { it.id }
+                                ) { employee ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { 
+                                                searchQuery = ""
+                                                viewModel.selectEmployee(employee) 
+                                            },
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(40.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Primary.copy(alpha = 0.12f)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Person,
+                                                    contentDescription = null,
+                                                    tint = Primary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                            Spacer(Modifier.width(12.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = "${employee.firstName} ${employee.firstSurname}",
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = TextPrimary
+                                                )
+                                                Spacer(Modifier.height(2.dp))
+                                                Text(
+                                                    text = "Código: ${employee.code}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = TextSecondary
+                                                )
+                                            }
+                                            Icon(
+                                                imageVector = Icons.Filled.ArrowForward,
+                                                contentDescription = null,
+                                                tint = Primary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                else -> {
+                    // ── DETALLE DE CARTERA (Vendedor o Admin explorando) ──
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        if (uiState.isAdmin && uiState.selectedEmployee != null) {
+                            // Banner superior con el nombre del empleado seleccionado
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, top = 12.dp, bottom = 4.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                                ),
+                                border = BorderStroke(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Badge,
+                                        contentDescription = null,
+                                        tint = Primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "${uiState.selectedEmployee.firstName} ${uiState.selectedEmployee.firstSurname}",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimary
+                                        )
+                                        Text(
+                                            text = "Cartera de Clientes • ${uiState.selectedEmployee.code}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { viewModel.selectEmployee(null) },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Close,
+                                            contentDescription = "Cambiar vendedor",
+                                            tint = TextMuted,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
 
-                        items(
-                            items = uiState.clients,
-                            key   = { it.id }
-                        ) { client ->
-                            ClientCard(
-                                client   = client,
-                                onEdit   = { onNavigateToForm(client.id) },
-                                onToggle = { viewModel.toggleClientActive(client) }
-                            )
+                        if (uiState.clients.isEmpty()) {
+                            Box(
+                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                EmptyClients(
+                                    onAdd = { onNavigateToForm(null) }
+                                )
+                            }
+                        } else {
+                            LazyColumn(
+                                state               = listState,
+                                modifier            = Modifier.weight(1f),
+                                contentPadding      = PaddingValues(
+                                    start  = 16.dp,
+                                    end    = 16.dp,
+                                    top    = 8.dp,
+                                    bottom = 88.dp   // ? espacio para el FAB
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                // ── Contador ─────────────────────────────────────
+                                item {
+                                    Text(
+                                        text  = "${uiState.clients.size} clientes registrados",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextSecondary,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                }
+
+                                items(
+                                    items = uiState.clients,
+                                    key   = { it.id }
+                                ) { client ->
+                                    ClientCard(
+                                        client   = client,
+                                        onEdit   = { onNavigateToForm(client.id) },
+                                        onToggle = { viewModel.toggleClientActive(client) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }

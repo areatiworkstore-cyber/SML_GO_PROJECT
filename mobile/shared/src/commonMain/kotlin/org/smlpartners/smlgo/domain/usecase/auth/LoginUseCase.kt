@@ -35,3 +35,12 @@ class IsLoggedInUseCase(private val repository: AuthRepository) {
 class GetCurrentRolesUseCase(private val repository: AuthRepository) {
     operator fun invoke(): List<String> = repository.getCurrentRoles()
 }
+
+    
+class GetActiveUsersUseCase(private val repository: AuthRepository) {
+    suspend operator fun invoke() = repository.getActiveUsers()
+}
+
+class GetFullUserUseCase(private val repository: AuthRepository) {
+    suspend operator fun invoke() = repository.getFullUser()
+}

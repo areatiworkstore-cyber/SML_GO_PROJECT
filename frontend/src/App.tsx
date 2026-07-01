@@ -78,7 +78,7 @@ class ViewErrorBoundary extends React.Component<
 
 function AppContent() {
   const { isAuthenticated, user, logout, loading } = useAuth();
-  const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
+  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
   const [activeView, setActiveView] = useState<'agenda' | 'register' | 'portfolio' | 'audit' | 'employees' | 'map'>('agenda');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null);
@@ -122,7 +122,8 @@ function AppContent() {
           justifyContent: 'center',
           minHeight: '100vh',
           gap: 2,
-          backgroundColor: '#070f1a',
+          backgroundColor: themeMode === 'dark' ? '#0F1D33' : '#ffffff',
+          color: themeMode === 'dark' ? '#ffffff' : '#0F1D33',
         }}
       >
         <CircularProgress sx={{ color: '#F29200' }} size={48} />

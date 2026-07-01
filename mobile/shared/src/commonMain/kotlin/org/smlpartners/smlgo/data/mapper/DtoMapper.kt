@@ -103,6 +103,7 @@ fun ClientDto.toDomain() = Client(
     latitude       = latitude,
     longitude      = longitude,
     observation    = observation,
+    userId         = userId,
 )
 
 // ── Domain Model → Request DTO ────────────────────────────────────────────
@@ -121,6 +122,7 @@ fun Client.toRequestDto() = ClientRequestDto(
     latitude       = latitude,
     longitude      = longitude,
     observation    = observation,
+    userId         = userId,
 )
 
 // ── Next-Code Client ────────────────────────────────────────────────────────────────

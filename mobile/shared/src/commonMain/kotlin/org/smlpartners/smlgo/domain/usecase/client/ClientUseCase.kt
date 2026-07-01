@@ -7,8 +7,8 @@ import org.smlpartners.smlgo.domain.model.NextCode
 import org.smlpartners.smlgo.domain.repository.ClientRepository
 
 class GetClientsUseCase(private val repository: ClientRepository) {
-    suspend operator fun invoke(): ApiResult<List<Client>> =
-        repository.getClients()
+    suspend operator fun invoke(userId: Int? = null): ApiResult<List<Client>> =
+        repository.getClients(userId)
 }
 
 class GetClientByIdUseCase(private val repository: ClientRepository) {

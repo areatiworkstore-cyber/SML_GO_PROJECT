@@ -5,7 +5,7 @@ import org.smlpartners.smlgo.domain.model.Client
 import org.smlpartners.smlgo.domain.model.NextCode
 
 interface ClientRepository {
-    suspend fun getClients(): ApiResult<List<Client>>
+    suspend fun getClients(userId: Int? = null): ApiResult<List<Client>>
     suspend fun getClientById(id: Int): ApiResult<Client>
     suspend fun createClient(client: Client): ApiResult<Client>
     suspend fun updateClient(id: Int, client: Client): ApiResult<Client>
