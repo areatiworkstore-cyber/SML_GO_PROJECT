@@ -29,12 +29,12 @@ import { ModuleLoader } from './components/ModuleLoader';
 import smlLogo from './assets/sml_Go.png';
 
 // ── Lazy imports a nivel de módulo (referencias estables, evitan re-mount en Suspense) ──
-const RouteItinerary  = lazy(() => import('./features/routes/components/RouteItinerary'));
-const ClientForm      = lazy(() => import('./features/clients/components/ClientForm'));
+const RouteItinerary = lazy(() => import('./features/routes/components/RouteItinerary'));
+const ClientForm = lazy(() => import('./features/clients/components/ClientForm'));
 const CustomerPortfolio = lazy(() => import('./features/clients/components/CustomerPortfolio'));
-const CustomerMap     = lazy(() => import('./features/clients/components/CustomerMap'));
-const SellerAudit     = lazy(() => import('./features/audit/components/SellerAudit'));
-const EmployeeList    = lazy(() => import('./features/employee/components/EmployeeList'));
+const CustomerMap = lazy(() => import('./features/clients/components/CustomerMap'));
+const SellerAudit = lazy(() => import('./features/audit/components/SellerAudit'));
+const EmployeeList = lazy(() => import('./features/employee/components/EmployeeList'));
 
 const drawerWidth = 260;
 
@@ -310,7 +310,7 @@ function AppContent() {
                     {user?.fullName || 'Cargando...'}
                   </div>
                   <div className="text-[10px] font-bold uppercase" style={{ color: '#64748b' }}>
-                    {user?.code}
+                    Código: {user?.code}
                   </div>
                 </div>
 
