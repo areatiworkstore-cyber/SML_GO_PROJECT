@@ -62,7 +62,7 @@ class AuthRepositoryImpl(
                 secondName     = myProfile.secondName     ?: "",
                 firstSurname   = surname,
                 secondSurname  = myProfile.secondSurname  ?: "",
-                documentType   = myProfile.documentType?.toDomain(),
+                documentType   = myProfile.documentType.toDomain(),
                 documentNumber = myProfile.documentNumber ?: "",
                 cellphone      = myProfile.cellphone      ?: "",
                 email          = myProfile.email          ?: "",

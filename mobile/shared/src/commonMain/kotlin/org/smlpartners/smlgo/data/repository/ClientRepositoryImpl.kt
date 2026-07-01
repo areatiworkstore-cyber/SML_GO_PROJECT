@@ -13,7 +13,7 @@ class ClientRepositoryImpl(
     private val api: ClientApiService
 ) : ClientRepository {
 
-    override suspend fun getClients(userId: Int? = null): ApiResult<List<Client>> =
+    override suspend fun getClients(userId: Int?): ApiResult<List<Client>> =
         safeApiCall { api.getClients(userId).map { it.toDomain() } }
 
     override suspend fun getClientById(id: Int): ApiResult<Client> =
@@ -31,6 +31,7 @@ class ClientRepositoryImpl(
                 .map { it.toDomain() }
                 .filter { it.hasLocation }
         }
+
     override suspend fun getNextCode(): ApiResult<NextCode> =
         safeApiCall { api.getNextCode().toDomain() }
 

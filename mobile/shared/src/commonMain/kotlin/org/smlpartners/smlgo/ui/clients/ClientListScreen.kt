@@ -226,7 +226,7 @@ fun ClientListScreen(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, top = 12.dp, bottom = 4.dp),
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
@@ -251,13 +251,13 @@ fun ClientListScreen(
                                     Spacer(Modifier.width(10.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = "${uiState.selectedEmployee.firstName} ${uiState.selectedEmployee.firstSurname}",
+                                            text = "${uiState.selectedEmployee!!.firstName} ${uiState.selectedEmployee!!.firstSurname}",
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = TextPrimary
                                         )
                                         Text(
-                                            text = "Cartera de Clientes • ${uiState.selectedEmployee.code}",
+                                            text = "Cartera de Clientes • ${uiState.selectedEmployee!!.code}",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = TextSecondary
                                         )
