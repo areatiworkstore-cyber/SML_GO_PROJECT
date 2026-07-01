@@ -12,9 +12,9 @@ data class UserDto(
     @SerialName("first_surname")    val firstSurname    : String? = null,
     @SerialName("second_surname")   val secondSurname   : String? = null,
     @SerialName("document_type")    val documentType    : DocumentTypeDto? = null,
-    @SerialName("document_number")  val documentNumber  : String? = null,
+    @SerialName("document_number")  val documentNumber  : String,
     @SerialName("cellphone")        val cellphone       : String? = null,
-    @SerialName("email")            val email           : String? = null,
+    @SerialName("email")            val email           : String,
     @SerialName("roles")            val roles           : List<RoleUserDto> = emptyList()
 )
 
