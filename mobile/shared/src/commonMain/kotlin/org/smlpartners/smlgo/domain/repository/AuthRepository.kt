@@ -12,6 +12,7 @@ interface AuthRepository {
     suspend fun register(username: String, password: String): ApiResult<User>
     suspend fun updateUser(id: Int, user: User): ApiResult<User>
     suspend fun getFullUser(): ApiResult<User>
+    suspend fun getActiveUsers(): ApiResult<List<User>>
     fun isLoggedIn(): Boolean
     fun getCurrentUserId(): Int?
 }

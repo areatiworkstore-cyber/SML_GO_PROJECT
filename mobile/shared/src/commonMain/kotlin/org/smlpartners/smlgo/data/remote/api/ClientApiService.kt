@@ -14,14 +14,20 @@ import org.smlpartners.smlgo.data.remote.dto.NextCodeDto
 
 import org.smlpartners.smlgo.core.network.HttpClientManager
 
+import io.ktor.client.request.parameter
+
 class ClientApiService(private val manager: HttpClientManager) {
     private val client get() = manager.client
 
     suspend fun getNextCode(): NextCodeDto =
         client.get("clients/next-code").body()
 
-    suspend fun getClients(): List<ClientDto> =
-        client.get("clients").body()
+    suspend fun getClients(userId: Int? = null): List<ClientDto> =
+        client.get("clients") {
+            userId?.let {
+                parameter("user_id", it)
+            }
+        }.body()
 
 
     suspend fun getClientsWithLocation(id: Int): String? =

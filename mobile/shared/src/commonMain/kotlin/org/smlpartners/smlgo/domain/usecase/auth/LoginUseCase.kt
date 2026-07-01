@@ -27,3 +27,11 @@ class LogoutUseCase(private val repository: AuthRepository) {
 class IsLoggedInUseCase(private val repository: AuthRepository) {
     operator fun invoke(): Boolean = repository.isLoggedIn()
 }
+
+class GetActiveUsersUseCase(private val repository: AuthRepository) {
+    suspend operator fun invoke() = repository.getActiveUsers()
+}
+
+class GetFullUserUseCase(private val repository: AuthRepository) {
+    suspend operator fun invoke() = repository.getFullUser()
+}

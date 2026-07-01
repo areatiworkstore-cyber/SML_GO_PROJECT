@@ -49,4 +49,7 @@ class AuthApiService(private val manager: HttpClientManager) {
             contentType(ContentType.Application.Json)
             setBody(update)
         }.body()
+
+    suspend fun getActiveUsers(): List<UserDto> =
+        client.get("users/active").body()
 }

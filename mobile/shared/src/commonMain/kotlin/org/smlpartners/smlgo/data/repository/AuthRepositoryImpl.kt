@@ -94,6 +94,11 @@ class AuthRepositoryImpl(
             api.getMe().toDomainUser()   // ← users/me con campos completos
         }
 
+    override suspend fun getActiveUsers(): ApiResult<List<User>> =
+        safeApiCall {
+            api.getActiveUsers().map { it.toDomain() }
+        }
+
     override fun isLoggedIn(): Boolean = secureStorage.isLoggedIn()
 
     override fun getCurrentUserId(): Int? = secureStorage.getUserId()
