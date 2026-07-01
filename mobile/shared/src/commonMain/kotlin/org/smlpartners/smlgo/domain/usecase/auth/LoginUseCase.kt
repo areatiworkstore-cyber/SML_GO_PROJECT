@@ -27,3 +27,11 @@ class LogoutUseCase(private val repository: AuthRepository) {
 class IsLoggedInUseCase(private val repository: AuthRepository) {
     operator fun invoke(): Boolean = repository.isLoggedIn()
 }
+
+/**
+ * Devuelve los roles del usuario desde SecureStorage, sin llamada a red.
+ * Útil para guards de navegación y verificaciones de permisos en la UI.
+ */
+class GetCurrentRolesUseCase(private val repository: AuthRepository) {
+    operator fun invoke(): List<String> = repository.getCurrentRoles()
+}

@@ -5,20 +5,20 @@ import org.smlpartners.smlgo.core.network.safeApiCall
 import org.smlpartners.smlgo.core.security.SecureStorage
 import org.smlpartners.smlgo.data.mapper.toDomain
 import org.smlpartners.smlgo.data.mapper.toUpdateDto
+import org.smlpartners.smlgo.data.mapper.toDomainUser
 import org.smlpartners.smlgo.data.remote.api.AuthApiService
 import org.smlpartners.smlgo.domain.model.Profile
+import org.smlpartners.smlgo.domain.model.Role
 import org.smlpartners.smlgo.domain.model.User
 import org.smlpartners.smlgo.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.smlpartners.smlgo.core.network.HttpClientManager
-import org.smlpartners.smlgo.data.mapper.toDomainUser
-import org.smlpartners.smlgo.domain.model.DocumentType
 
 class AuthRepositoryImpl(
-    private val api           : AuthApiService,
-    private val secureStorage : SecureStorage,
+    private val api              : AuthApiService,
+    private val secureStorage    : SecureStorage,
     private val httpClientManager: HttpClientManager
 ) : AuthRepository {
 
@@ -27,46 +27,47 @@ class AuthRepositoryImpl(
 
     override suspend fun login(username: String, password: String): ApiResult<Profile> {
         val result = safeApiCall {
-            val tokenDto = api.login(username, password)
-            val token    = tokenDto.accessToken ?: ""
-            if (token.isBlank()) throw Exception("Token inválido")
+            // 1. Login → extrae JWT del header Set-Cookie
+            val token = api.login(username, password)
+            if (token.isBlank()) throw Exception("Token inválido recibido del servidor")
 
-            // Guarda el token
+            // 2. Guarda el token antes de llamar a /users/me
             secureStorage.saveToken(token)
 
-            // Obtiene el perfil con el token explícito — solo esta vez
-            val myProfile = api.getMe(token)
-            val firstName = myProfile.firstName ?: "Vendedor"
-            val surname   = myProfile.firstSurname ?: ""
-            
-            println("[AuthRepo] getMe response: id=${myProfile.id}, name=$firstName")
+            // 3. Recrea el cliente para que DefaultRequest ya inyecte la cookie
+            httpClientManager.recreate()
 
+            // 4. Obtiene el perfil completo con el cliente actualizado
+            val myProfile = api.getMe()
+            val firstName = myProfile.firstName ?: "Usuario"
+            val surname   = myProfile.firstSurname ?: ""
+
+            println("[AuthRepo] getMe → id=${myProfile.id}, name=$firstName $surname")
+
+            // 5. Persiste datos de sesión + roles
             secureStorage.saveUserSession(
                 id   = myProfile.id,
                 code = myProfile.code,
                 name = "$firstName $surname".trim()
             )
+            secureStorage.saveRoles(myProfile.roles)
 
             _isLoggedInFlow.value = true
 
+            // 6. Construye el Profile del dominio (roles como List<String> → List<Role>)
             Profile(
                 id             = myProfile.id,
                 code           = myProfile.code,
                 firstName      = firstName,
-                secondName     = myProfile.secondName ?: "",
+                secondName     = myProfile.secondName     ?: "",
                 firstSurname   = surname,
-                secondSurname  = myProfile.secondSurname ?: "",
+                secondSurname  = myProfile.secondSurname  ?: "",
                 documentType   = myProfile.documentType?.toDomain(),
                 documentNumber = myProfile.documentNumber ?: "",
-                cellphone      = myProfile.cellphone ?: "",
-                email          = myProfile.email ?: "",
-                roles          = myProfile.roles.map { it.toDomain() }
+                cellphone      = myProfile.cellphone      ?: "",
+                email          = myProfile.email          ?: "",
+                roles          = myProfile.roles.map { Role(role = it) }
             )
-        }
-
-        // ← FUERA del safeApiCall — el cliente viejo ya terminó su trabajo
-        if (result is ApiResult.Success) {
-            httpClientManager.recreate()
         }
 
         return result
@@ -89,12 +90,13 @@ class AuthRepositoryImpl(
         api.updateUser(id, user.toUpdateDto()).toDomain()
     }
 
-    override suspend fun getFullUser(): ApiResult<User> =
-        safeApiCall {
-            api.getMe().toDomainUser()   // ← users/me con campos completos
-        }
+    override suspend fun getFullUser(): ApiResult<User> = safeApiCall {
+        api.getMe().toDomainUser()
+    }
 
     override fun isLoggedIn(): Boolean = secureStorage.isLoggedIn()
 
     override fun getCurrentUserId(): Int? = secureStorage.getUserId()
+
+    override fun getCurrentRoles(): List<String> = secureStorage.getUserRoles()
 }

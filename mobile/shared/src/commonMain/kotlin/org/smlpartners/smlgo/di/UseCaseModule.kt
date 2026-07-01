@@ -16,6 +16,7 @@ val useCaseModule = module {
     factory { LoginUseCase(get()) }
     factory { LogoutUseCase(get()) }
     factory { IsLoggedInUseCase(get()) }
+    factory { GetCurrentRolesUseCase(get()) }
 
     // ── Next Code Client ──────────────────────────────────────────────
     factory { GetNextClientCodeUseCase(get()) }

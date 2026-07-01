@@ -3,12 +3,11 @@ package org.smlpartners.smlgo.data.remote.api
 import io.ktor.client.call.body
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
-import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.Parameters
 import io.ktor.http.contentType
 import org.smlpartners.smlgo.data.remote.dto.*
@@ -17,7 +16,12 @@ import org.smlpartners.smlgo.core.network.HttpClientManager
 class AuthApiService(private val manager: HttpClientManager) {
     private val client get() = manager.client
 
-    suspend fun login(username: String, password: String): TokenResponseDto {
+    /**
+     * El backend responde con Set-Cookie: access_token=<jwt>; HttpOnly
+     * Extraemos el JWT del header y lo devolvemos como String.
+     * El body JSON (LoginResponseDto) se descarta — los roles se obtienen en getMe().
+     */
+    suspend fun login(username: String, password: String): String {
         val response = client.submitForm(
             url = "auth/login",
             formParameters = Parameters.build {
@@ -26,8 +30,14 @@ class AuthApiService(private val manager: HttpClientManager) {
                 append("grant_type", "password")
             }
         )
-        val body = response.body<TokenResponseDto>()
-        return body
+        // Set-Cookie puede venir como múltiples headers; buscamos el de access_token
+        val setCookieHeaders = response.headers.getAll(HttpHeaders.SetCookie) ?: emptyList()
+        return setCookieHeaders
+            .firstOrNull { it.trimStart().startsWith("access_token=") }
+            ?.substringAfter("access_token=")
+            ?.substringBefore(";")
+            ?.trim()
+            ?: throw Exception("El servidor no devolvió la cookie de autenticación")
     }
 
     suspend fun register(username: String, password: String): UserDto =
@@ -35,14 +45,13 @@ class AuthApiService(private val manager: HttpClientManager) {
             contentType(ContentType.Application.Json)
             setBody(LoginRequestDto(username, password))
         }.body()
-    suspend fun getMe(token: String? = null): MyProfileDto =
-        client.get("users/me") {
-            token?.let {
-                headers {
-                    append("Authorization", "Bearer $it")
-                }
-            }
-        }.body()
+
+    /**
+     * Sin parámetro token — el header Cookie: access_token=<jwt>
+     * se inyecta automáticamente por HttpClientFactory en cada request.
+     */
+    suspend fun getMe(): MyProfileDto =
+        client.get("users/me").body()
 
     suspend fun updateUser(id: Int, update: UserUpdateDto): UserDto =
         client.put("users/$id") {

@@ -5,9 +5,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.DefaultRequest
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.auth.Auth
-import io.ktor.client.plugins.auth.providers.BearerTokens
-import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
@@ -17,64 +14,58 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import org.smlpartners.smlgo.core.utils.platformName
 
+/**
+ * Crea el HttpClient de Ktor para autenticación por cookie.
+ *
+ * El backend usa cookies HttpOnly: en cada request se inyecta el header
+ * "Cookie: access_token=<jwt>" obtenido del tokenProvider(), simulando el
+ * comportamiento del navegador. El plugin Auth (Bearer) ya no se usa.
+ *
+ * @param tokenProvider  lambda que devuelve el JWT guardado en SecureStorage
+ * @param onTokenExpired callback para cerrar sesión cuando el backend retorna 401
+ */
 fun createHttpClient(
     tokenProvider: () -> String?,
-    onTokenExpired: () -> Unit = {}   // ← callback para cerrar sesión si expira
+    onTokenExpired: () -> Unit = {}
 ): HttpClient {
     return HttpClient(httpClientEngine()) {
         expectSuccess = true
+
         install(ContentNegotiation) {
-            // ── Serialización ────────────────────────────────────────────
             json(
                 Json {
-                    prettyPrint = true // tolera campos nuevos del backend
-                    isLenient = true // acepta JSON malformado levemente
-                    ignoreUnknownKeys = true
+                    prettyPrint        = true
+                    isLenient          = true
+                    ignoreUnknownKeys  = true
                 }
             )
         }
 
-        // ── Timeouts ────────────────────────────────────────────
         install(HttpTimeout) {
             connectTimeoutMillis = BuildConfig.CONNECT_TIMEOUT
             requestTimeoutMillis = BuildConfig.READ_TIMEOUT
-            socketTimeoutMillis = BuildConfig.WRITE_TIMEOUT
+            socketTimeoutMillis  = BuildConfig.WRITE_TIMEOUT
         }
 
-        // ── Retry automático ─────────────────────────────────────────
         install(HttpRequestRetry) {
             retryOnServerErrors(maxRetries = 3)
             retryOnException(maxRetries = 3, retryOnTimeout = true)
             exponentialDelay(base = 2.0, maxDelayMs = 10_000)
         }
 
-        // ── JWT Bearer token ─────────────────────────────────────────
-        install(Auth) {
-            bearer {
-                loadTokens {
-                    val token = tokenProvider() ?: return@loadTokens null
-                    BearerTokens(accessToken = token, refreshToken = "")
-                }
-                // Si el token expira (401), limpiamos sesión
-                refreshTokens { null }
-                // Solo adjunta el header en rutas que no sean login
-                sendWithoutRequest { request ->
-                    request.url.host == BuildConfig.BASE_URL
-                        .removePrefix("https://")
-                        .removePrefix("http://")
-                        .substringBefore("/")
-                }
-            }
-        }
-
+        // ── Cookie-based auth — el tokenProvider() se evalúa por cada request ──
         install(DefaultRequest) {
             val base = BuildConfig.BASE_URL
             url(if (base.endsWith("/")) base else "$base/")
             header("Accept", "application/json")
             header("X-Platform", platformName)
+            // Inyectar cookie si hay sesión activa
+            tokenProvider()?.takeIf { it.isNotBlank() }?.let { token ->
+                header("Cookie", "access_token=$token")
+            }
         }
 
-        // ── Logging (solo debug) ──────────────────────────────────────
+        // ── Logging (solo en debug) ───────────────────────────────────────────
         if (BuildConfig.IS_DEBUG) {
             install(Logging) {
                 level  = LogLevel.BODY

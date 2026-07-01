@@ -14,4 +14,6 @@ interface AuthRepository {
     suspend fun getFullUser(): ApiResult<User>
     fun isLoggedIn(): Boolean
     fun getCurrentUserId(): Int?
+    /** Devuelve los roles del usuario desde almacenamiento local (sin red). */
+    fun getCurrentRoles(): List<String>
 }
