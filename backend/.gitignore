@@ -37,3 +37,8 @@ htmlcov/
 .idea/
 .vscode/
 *.swp
+
+# Certs
+certs/
+*.pem
+*.pub

@@ -1,7 +1,7 @@
 from app.api.v1.endpoints import routes
 from app.api.v1.endpoints import routes
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -207,10 +207,7 @@ def delete_waypoint(
     crud_route.delete_waypoint(db, db_waypoint=waypoint)
     return None
 
-import uuid
-import os
-import shutil
-from fastapi import UploadFile, File
+from app.services.media_storage_service import MediaStorageService
 
 @router.post("/waypoints/{waypoint_id}/upload-photo", response_model=WaypointResponse)
 def upload_waypoint_photo(
@@ -220,7 +217,8 @@ def upload_waypoint_photo(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Sube una foto de evidencia para un waypoint específico y almacena la ruta en `url_photo`.
+    Sube una foto de evidencia para un waypoint específico a cPanel mediante SFTP
+    y almacena la ruta relativa en la base de datos.
     """
     waypoint = crud_route.get_waypoint_by_id(db, waypoint_id=waypoint_id)
     if not waypoint:
@@ -231,30 +229,26 @@ def upload_waypoint_photo(
     if "ADMIN" not in roles and route.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="No tienes permisos para realizar esta acción")
 
-    # Validar extensión de imagen
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in [".jpg", ".jpeg", ".png", ".webp"]:
-        raise HTTPException(status_code=400, detail="Formato de archivo no soportado. Solo se permiten imágenes.")
+    # Obtener el código o ID del usuario autenticado de forma segura
+    user_code = current_user.code if current_user.code else str(current_user.id)
+    
+    # Obtener el RUC del cliente del waypoint
+    client_ruc = "desconocido"
+    if waypoint.client and waypoint.client.document_number:
+        client_ruc = waypoint.client.document_number
 
-    # Asegurar directorio de subidas
-    upload_dir = "static/uploads"
-    os.makedirs(upload_dir, exist_ok=True)
+    # Subir foto por SFTP
+    relative_path = MediaStorageService.upload_photo(
+        file=file,
+        user_code=user_code,
+        client_ruc=client_ruc
+    )
 
-    # Nombre único
-    filename = f"wp_{waypoint_id}_{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(upload_dir, filename)
-
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"No se pudo guardar el archivo: {str(e)}")
-
-    # Guardar url relativa
-    url_photo = f"/static/uploads/{filename}"
-    waypoint.url_photo = url_photo
+    # Guardar url relativa (ej. /ADM001/20601122334/2026-07-01_14-35-21.jpg)
+    waypoint.url_photo = relative_path
     db.add(waypoint)
     db.commit()
     db.refresh(waypoint)
 
     return waypoint
+

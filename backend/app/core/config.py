@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str
 
+    # SFTP Storage Config
+    SFTP_HOST: str
+    SFTP_PORT: int
+    SFTP_USERNAME: str
+    SFTP_PASSPHRASE: str
+    SFTP_REMOTE_DIR: str
+    MEDIA_PUBLIC_URL_BASE: str
+
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
