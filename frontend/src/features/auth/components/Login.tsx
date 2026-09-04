@@ -41,7 +41,10 @@ export const Login: React.FC = () => {
             bodyParams.append('username', cleanIdentifier);
             bodyParams.append('password', password);
 
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+            const envUrl = import.meta.env.VITE_API_URL || '';
+            const baseUrl = (envUrl.startsWith('http://') || envUrl.startsWith('https://'))
+                ? envUrl
+                : (typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : '/api/v1');
             const response = await fetch(`${baseUrl}/auth/login`, {
                 method: 'POST',
                 credentials: 'include',

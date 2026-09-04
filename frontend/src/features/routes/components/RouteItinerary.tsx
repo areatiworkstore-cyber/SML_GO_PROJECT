@@ -63,10 +63,10 @@ const getBaseUrl = () => {
       const url = new URL(baseEnvUrl);
       return url.origin;
     } catch {
-      return '';
+      return typeof window !== 'undefined' ? window.location.origin : '';
     }
   }
-  return '';
+  return typeof window !== 'undefined' ? window.location.origin : '';
 };
 
 export const RouteItinerary: React.FC = () => {

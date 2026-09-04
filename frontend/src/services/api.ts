@@ -1,7 +1,7 @@
 let baseEnvUrl = import.meta.env.VITE_API_URL || '';
-// Si no empieza con http:// o https://, significa que es una ruta mal configurada o relativa
+// Si no empieza con http:// o https://, usamos el origen dinamico actual del navegador + /api/v1
 if (!baseEnvUrl.startsWith('http://') && !baseEnvUrl.startsWith('https://')) {
-  baseEnvUrl = 'https://go.sml.com.pe/api/v1';
+  baseEnvUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : '/api/v1';
 }
 const API_BASE_URL = baseEnvUrl;
 
