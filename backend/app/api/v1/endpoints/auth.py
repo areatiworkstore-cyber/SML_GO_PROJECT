@@ -39,8 +39,8 @@ def login_for_access_token(
         key="access_token", # Nombre de la cookie
         value=access_token, # El token JWT generado
         httponly=True, # La cookie no es accesible por JavaScript
-        secure=False, # En producción, usar True junto con SameSite=None y protocolo HTTPS
-        samesite="lax", # Permite el envío de cookies en solicitudes cross-site con ciertas restricciones
+        secure=True, # En producción cross-site (sml.com.pe <-> workstore.com.pe) debe ser True
+        samesite="none", # Permite el envío de cookies cross-site entre dominios distintos
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60 # Tiempo de expiración de la cookie
     )
     
@@ -55,10 +55,11 @@ def logout(response: Response):
     response.delete_cookie(
         key="access_token", # Debe ser el mismo nombre que en el login
         httponly=True,
-        secure=False, # En producción, usar True junto con SameSite=None y protocolo HTTPS
-        samesite="lax" # Permite el envío de cookies en solicitudes cross-site con ciertas restricciones
+        secure=True,
+        samesite="none"
     )
     return {
         "success": True
     }
+
 
