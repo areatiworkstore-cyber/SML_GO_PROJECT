@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     FTP_REMOTE_DIR: str = ""
 
 
-    MEDIA_PUBLIC_URL_BASE: str
+    MEDIA_PUBLIC_URL_BASE: str = "https://smlgo.sml.com.pe/media"
 
     # CORS
     BACKEND_CORS_ORIGINS: Any = [
