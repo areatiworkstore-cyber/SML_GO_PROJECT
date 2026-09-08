@@ -15,7 +15,14 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str
 
-    # SFTP Storage Config
+    # FTP Storage Config (Plesk)
+    FTP_HOST: str = ""
+    FTP_PORT: int = 21
+    FTP_USERNAME: str = ""
+    FTP_PASSWORD: str = ""
+    FTP_REMOTE_DIR: str = ""
+
+    # SFTP Storage Config (Legacy / Fallback)
     SFTP_HOST: str
     SFTP_PORT: int
     SFTP_USERNAME: str

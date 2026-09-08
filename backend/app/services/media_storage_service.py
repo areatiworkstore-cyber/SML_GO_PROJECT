@@ -3,8 +3,8 @@ import re
 import uuid
 import logging
 from datetime import datetime
+from ftplib import FTP, error_perm
 from fastapi import UploadFile, HTTPException, status
-import paramiko
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class MediaStorageService:
         Valida que el archivo subido sea una imagen permitida y no exceda el tamaño límite.
         """
         # 1. Validar extensión
-        ext = os.path.splitext(file.filename)[1].lower()
+        ext = os.path.splitext(file.filename)[1].lower() if file.filename else ""
         if ext not in ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -61,29 +61,29 @@ class MediaStorageService:
             )
 
     @staticmethod
-    def _makedirs_sftp(sftp: paramiko.SFTPClient, remote_path: str):
+    def _makedirs_ftp(ftp: FTP, remote_path: str):
         """
-        Crea directorios remotos recursivamente en el servidor SFTP
-        y les asigna permisos 755 (rwxr-xr-x).
+        Crea directorios remotos recursivamente en el servidor FTP.
         """
-        parts = remote_path.strip("/").split("/")
-        current = ""
-        if remote_path.startswith("/"):
-            current = "/"
+        parts = [p for p in remote_path.strip("/").split("/") if p]
         
+        try:
+            ftp.cwd("/")
+        except Exception as e:
+            logger.error(f"Error accediendo a la raíz del FTP: {str(e)}")
+
+        current_dir = ""
         for part in parts:
-            if not part:
-                continue
-            current = os.path.join(current, part).replace("\\", "/")
+            current_dir = f"{current_dir}/{part}"
             try:
-                sftp.stat(current)
-            except IOError:
+                ftp.cwd(current_dir)
+            except error_perm:
                 try:
-                    sftp.mkdir(current)
-                    sftp.chmod(current, 0o755)
-                    logger.info(f"Directorio remoto creado: {current}")
+                    ftp.mkd(current_dir)
+                    ftp.cwd(current_dir)
+                    logger.info(f"Directorio remoto FTP creado: {current_dir}")
                 except Exception as e:
-                    logger.error(f"Error creando directorio SFTP {current}: {str(e)}")
+                    logger.error(f"Error creando directorio FTP {current_dir}: {str(e)}")
                     raise e
 
     @classmethod
@@ -94,7 +94,7 @@ class MediaStorageService:
         client_ruc: str
     ) -> str:
         """
-        Sube un archivo de imagen al servidor cPanel por SFTP.
+        Sube un archivo de imagen al servidor Plesk por FTP estándar (sin SSL/certificados).
         Retorna la ruta relativa del archivo guardado (ej. '/user_code/client_ruc/filename.jpg').
         """
         # 1. Validar el archivo
@@ -105,96 +105,67 @@ class MediaStorageService:
         safe_ruc = cls.sanitize_path_segment(client_ruc)
 
         # 3. Generar nombre de archivo único
-        ext = os.path.splitext(file.filename)[1].lower()
+        ext = os.path.splitext(file.filename)[1].lower() if file.filename else ".jpg"
         now_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         filename = f"{now_str}{ext}"
 
-        # 4. Establecer conexión SFTP con clave privada
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        # Obtener datos de conexión FTP desde settings (FTP_* con fallback a SFTP_*)
+        ftp_host = getattr(settings, "FTP_HOST", None) or settings.SFTP_HOST
+        ftp_port = getattr(settings, "FTP_PORT", None) if getattr(settings, "FTP_HOST", None) else (21 if settings.SFTP_PORT == 22 else settings.SFTP_PORT)
+        ftp_username = getattr(settings, "FTP_USERNAME", None) or settings.SFTP_USERNAME
+        ftp_password = getattr(settings, "FTP_PASSWORD", None) or settings.SFTP_PASSPHRASE
+        base_remote_dir = getattr(settings, "FTP_REMOTE_DIR", None) or settings.SFTP_REMOTE_DIR
 
-        # Ruta absoluta al archivo cert/id_sml_vps
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        key_path = os.path.join(base_dir, "certs", "id_sml_vps")
-
-        if not os.path.exists(key_path):
-            logger.error(f"Clave SSH no encontrada en la ruta: {key_path}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error de configuración del sistema de almacenamiento."
-            )
-
+        ftp = FTP()
         try:
-            logger.info("Cargando clave privada SSH...")
-            pkey = paramiko.Ed25519Key.from_private_key_file(
-                key_path,
-                password=settings.SFTP_PASSPHRASE if settings.SFTP_PASSPHRASE else None
-            )
-
-            logger.info(f"Conectando a servidor SFTP {settings.SFTP_HOST}...")
-            ssh.connect(
-                hostname=settings.SFTP_HOST,
-                port=settings.SFTP_PORT,
-                username=settings.SFTP_USERNAME,
-                pkey=pkey,
-                timeout=15
-            )
-
-            sftp = ssh.open_sftp()
-        except paramiko.PasswordRequiredException:
-            logger.error("La clave SSH requiere passphrase y no se proporcionó o es incorrecta.")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Fallo de autenticación del sistema de almacenamiento."
-            )
+            logger.info(f"Conectando al servidor FTP {ftp_host}:{ftp_port}...")
+            ftp.connect(host=ftp_host, port=ftp_port, timeout=15)
+            logger.info(f"Iniciando sesión en FTP con usuario '{ftp_username}'...")
+            ftp.login(user=ftp_username, passwd=ftp_password)
         except Exception as e:
-            logger.error(f"Error conectando al SFTP: {str(e)}")
+            logger.error(f"Error conectando o autenticando en FTP: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="No se pudo establecer conexión con el servidor de almacenamiento."
+                detail="No se pudo establecer conexión FTP con el servidor de almacenamiento."
             )
 
         try:
-            # 5. Crear la ruta remota
-            # Carpeta remota: {SFTP_REMOTE_DIR}/{safe_user}/{safe_ruc}
-            remote_dir = os.path.join(settings.SFTP_REMOTE_DIR, safe_user, safe_ruc).replace("\\", "/")
-            cls._makedirs_sftp(sftp, remote_dir)
+            # 4. Crear la ruta remota
+            # Carpeta remota: {base_remote_dir}/{safe_user}/{safe_ruc}
+            remote_dir = f"{base_remote_dir.rstrip('/')}/{safe_user}/{safe_ruc}"
+            cls._makedirs_ftp(ftp, remote_dir)
 
-            # 6. Prevenir colisiones de nombre de archivo
-            remote_file_path = os.path.join(remote_dir, filename).replace("\\", "/")
-            collision_count = 0
-            while True:
-                try:
-                    sftp.stat(remote_file_path)
-                    # Colisión encontrada -> Modificar nombre
-                    collision_count += 1
-                    filename = f"{now_str}_{uuid.uuid4().hex[:8]}{ext}"
-                    remote_file_path = os.path.join(remote_dir, filename).replace("\\", "/")
-                except IOError:
-                    # No existe el archivo -> Ruta libre
-                    break
+            # 5. Prevenir colisiones de nombre de archivo en el directorio de destino
+            try:
+                existing_files = set(ftp.nlst())
+            except Exception:
+                existing_files = set()
 
-            # 7. Subir archivo
-            logger.info(f"Subiendo archivo a: {remote_file_path}")
-            sftp.putfo(file.file, remote_file_path)
+            while filename in existing_files:
+                filename = f"{now_str}_{uuid.uuid4().hex[:8]}{ext}"
 
-            # Permisos 644 (rw-r--r--) para el archivo remoto
-            sftp.chmod(remote_file_path, 0o644)
-            logger.info("Subida exitosa y permisos aplicados.")
+            # 6. Subir archivo mediante STOR
+            file.file.seek(0)
+            logger.info(f"Subiendo archivo por FTP a: {remote_dir}/{filename}")
+            ftp.storbinary(f"STOR {filename}", file.file)
+            logger.info("Subida FTP exitosa.")
 
-            # 8. Retornar ruta relativa de la imagen
-            # Guardamos con el prefijo '/' para facilitar la construcción de URLs públicas
+            # 7. Retornar ruta relativa de la imagen (ej. /ADM001/20601122334/2026-07-01_14-35-21.jpg)
             relative_path = f"/{safe_user}/{safe_ruc}/{filename}"
             return relative_path
 
         except Exception as e:
-            logger.error(f"Error durante la subida SFTP del archivo: {str(e)}")
+            logger.error(f"Error durante la subida FTP del archivo: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error al guardar el archivo en el servidor remoto."
+                detail="Error al guardar el archivo en el servidor remoto mediante FTP."
             )
         finally:
-            if 'sftp' in locals():
-                sftp.close()
-            ssh.close()
-            logger.info("Conexión SFTP cerrada.")
+            try:
+                ftp.quit()
+            except Exception:
+                try:
+                    ftp.close()
+                except Exception:
+                    pass
+            logger.info("Conexión FTP cerrada.")
