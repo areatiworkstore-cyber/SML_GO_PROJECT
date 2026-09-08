@@ -109,12 +109,12 @@ class MediaStorageService:
         now_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         filename = f"{now_str}{ext}"
 
-        # Obtener datos de conexión FTP desde settings (FTP_* con fallback a SFTP_*)
-        ftp_host = getattr(settings, "FTP_HOST", None) or settings.SFTP_HOST
-        ftp_port = getattr(settings, "FTP_PORT", None) if getattr(settings, "FTP_HOST", None) else (21 if settings.SFTP_PORT == 22 else settings.SFTP_PORT)
-        ftp_username = getattr(settings, "FTP_USERNAME", None) or settings.SFTP_USERNAME
-        ftp_password = getattr(settings, "FTP_PASSWORD", None) or settings.SFTP_PASSPHRASE
-        base_remote_dir = getattr(settings, "FTP_REMOTE_DIR", None) or settings.SFTP_REMOTE_DIR
+        # Obtener datos de conexión FTP desde settings
+        ftp_host     = settings.FTP_HOST
+        ftp_port     = settings.FTP_PORT
+        ftp_username = settings.FTP_USERNAME
+        ftp_password = settings.FTP_PASSWORD
+        base_remote_dir = settings.FTP_REMOTE_DIR
 
         ftp = FTP()
         try:
@@ -122,6 +122,7 @@ class MediaStorageService:
             ftp.connect(host=ftp_host, port=ftp_port, timeout=15)
             logger.info(f"Iniciando sesión en FTP con usuario '{ftp_username}'...")
             ftp.login(user=ftp_username, passwd=ftp_password)
+            ftp.set_pasv(True)  # MODO PASIVO: Imprescindible para atravesar firewalls y NAT en Plesk/cPanel
         except Exception as e:
             logger.error(f"Error conectando o autenticando en FTP: {str(e)}")
             raise HTTPException(

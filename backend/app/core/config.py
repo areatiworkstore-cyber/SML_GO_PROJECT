@@ -22,12 +22,7 @@ class Settings(BaseSettings):
     FTP_PASSWORD: str = ""
     FTP_REMOTE_DIR: str = ""
 
-    # SFTP Storage Config (Legacy / Fallback)
-    SFTP_HOST: str
-    SFTP_PORT: int
-    SFTP_USERNAME: str
-    SFTP_PASSPHRASE: str
-    SFTP_REMOTE_DIR: str
+
     MEDIA_PUBLIC_URL_BASE: str
 
     # CORS
