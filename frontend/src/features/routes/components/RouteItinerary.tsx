@@ -582,7 +582,7 @@ export const RouteItinerary: React.FC = () => {
                                     <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>Evidencia Fotográfica:</Typography>
                                     <Box
                                       component="img"
-                                      src={`${getBaseUrl()}${wp.url_photo}`}
+                                      src={`${getBaseUrl()}/sellers/${wp.url_photo}`}
                                       alt="Evidencia"
                                       sx={{ maxWidth: 150, maxHeight: 150, borderRadius: 2, objectFit: 'cover', cursor: 'pointer', border: '1px solid', borderColor: 'divider' }}
                                       onClick={() => window.open(`${getBaseUrl()}${wp.url_photo}`, '_blank')}

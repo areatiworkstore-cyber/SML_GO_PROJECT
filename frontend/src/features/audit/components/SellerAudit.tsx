@@ -32,17 +32,8 @@ import { employeeService } from '../../employee/services';
 import { scheduleService } from '../../schedule_service';
 import { MapButton } from '../../../components/MapButton';
 
-const getBaseUrl = () => {
-  const baseEnvUrl = import.meta.env.VITE_API_URL || '';
-  if (baseEnvUrl.startsWith('http://') || baseEnvUrl.startsWith('https://')) {
-    try {
-      const url = new URL(baseEnvUrl);
-      return url.origin;
-    } catch {
-      return typeof window !== 'undefined' ? window.location.origin : '';
-    }
-  }
-  return typeof window !== 'undefined' ? window.location.origin : '';
+const getMediaUrl = () => {
+  return import.meta.env.PLESK_URL_MEDIA || '';
 };
 
 export const SellerAudit: React.FC = () => {
@@ -468,7 +459,7 @@ export const SellerAudit: React.FC = () => {
 
                                     <Box
                                       component="img"
-                                      src={`${getBaseUrl()}${wp.url_photo}`}
+                                      src={`${getMediaUrl()}/sellers/${wp.url_photo}`}
                                       alt="Evidencia"
                                       loading="lazy"
                                       sx={{
@@ -488,7 +479,7 @@ export const SellerAudit: React.FC = () => {
                                         },
                                       }}
                                       onClick={() =>
-                                        window.open(`${getBaseUrl()}${wp.url_photo}`, '_blank')
+                                        window.open(`${getMediaUrl()}/sellers/${wp.url_photo}`, '_blank')
                                       }
                                     />
                                   </Box>
