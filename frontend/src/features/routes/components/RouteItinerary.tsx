@@ -56,17 +56,8 @@ const getWeekDates = () => {
   return mapping;
 };
 
-const getBaseUrl = () => {
-  const baseEnvUrl = import.meta.env.VITE_API_URL || '';
-  if (baseEnvUrl.startsWith('http://') || baseEnvUrl.startsWith('https://')) {
-    try {
-      const url = new URL(baseEnvUrl);
-      return url.origin;
-    } catch {
-      return typeof window !== 'undefined' ? window.location.origin : '';
-    }
-  }
-  return typeof window !== 'undefined' ? window.location.origin : '';
+const getMediaUrl = () => {
+  return import.meta.env.PLESK_URL_MEDIA || '';
 };
 
 export const RouteItinerary: React.FC = () => {
@@ -582,10 +573,10 @@ export const RouteItinerary: React.FC = () => {
                                     <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>Evidencia Fotográfica:</Typography>
                                     <Box
                                       component="img"
-                                      src={`${getBaseUrl()}/sellers/${wp.url_photo}`}
+                                      src={`${getMediaUrl()}/sellers/${wp.url_photo}`}
                                       alt="Evidencia"
                                       sx={{ maxWidth: 150, maxHeight: 150, borderRadius: 2, objectFit: 'cover', cursor: 'pointer', border: '1px solid', borderColor: 'divider' }}
-                                      onClick={() => window.open(`${getBaseUrl()}${wp.url_photo}`, '_blank')}
+                                      onClick={() => window.open(`${getMediaUrl()}${wp.url_photo}`, '_blank')}
                                     />
                                   </Box>
                                 )}
