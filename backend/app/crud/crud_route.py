@@ -47,6 +47,9 @@ def delete_route(db: Session, db_route: Route) -> None:
 def get_waypoint_by_id(db: Session, waypoint_id: int):
     return db.query(Waypoint).filter(Waypoint.id == waypoint_id).first()
 
+def get_waypoints(db: Session, route_id: int):
+    return db.query(Waypoint).filter(Waypoint.route_id == route_id).all()
+
 def update_waypoint_status(db: Session, db_waypoint: Waypoint, wp_in: WaypointUpdate) -> Waypoint:
     update_data = wp_in.model_dump(exclude_unset=True)
     for field in update_data:

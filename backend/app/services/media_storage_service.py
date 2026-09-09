@@ -133,7 +133,7 @@ class MediaStorageService:
         try:
             # 4. Crear la ruta remota
             # Carpeta remota: {base_remote_dir}/{safe_user}/{safe_ruc}
-            remote_dir = f"{base_remote_dir.rstrip('/')}/{safe_user}/{safe_ruc}"
+            remote_dir = f"/{safe_user}/{safe_ruc}"
             cls._makedirs_ftp(ftp, remote_dir)
 
             # 5. Prevenir colisiones de nombre de archivo en el directorio de destino
