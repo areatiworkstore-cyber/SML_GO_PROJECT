@@ -44,7 +44,7 @@ def delete_route(db: Session, db_route: Route) -> None:
     db.commit()
     return True
 
-def get_waypoint_by_id(db: Session, waypoint_id: int):
+def get_waypoint_by_id(db: Session, waypoint_id: int) -> Waypoint:
     return db.query(Waypoint).filter(Waypoint.id == waypoint_id).first()
 
 def get_waypoints(db: Session, route_id: int):

@@ -170,3 +170,22 @@ class MediaStorageService:
                 except Exception:
                     pass
             logger.info("Conexión FTP cerrada.")
+
+    @staticmethod
+    def get_image_url(image_path: str) -> str:
+        """Obtiene la URL completa de una imagen.
+        
+        Args:
+            image_path: Ruta relativa de la imagen (ej. '/ADM001/20601122334/2026-07-01_14-35-21.jpg')
+            
+        Returns:
+            URL completa de la imagen (ej. 'https://smlgo.sml.com.pe/ADM001/20601122334/2026-07-01_14-35-21.jpg')
+        """
+        if not image_path:
+            return None
+
+        # Asegurar que no hay doble slash
+        base_url = settings.MEDIA_PUBLIC_URL_BASE.rstrip('/')
+        relative_path = image_path.lstrip('/')
+        
+        return f"{base_url}/{relative_path}"

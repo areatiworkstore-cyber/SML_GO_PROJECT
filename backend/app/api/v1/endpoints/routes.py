@@ -252,3 +252,18 @@ def upload_waypoint_photo(
 
     return waypoint
 
+@router.get("/waypoints/{waypoint_id}/photo", response_model=str)
+def get_waypoint_photo(waypoint_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Obtiene la URL de la foto de evidencia de un waypoint específico.
+    """
+    waypoint = crud_route.get_waypoint_by_id(db, waypoint_id=waypoint_id)
+    if not waypoint:
+        raise HTTPException(status_code=404, detail="Waypoint no encontrado")
+        
+    route = crud_route.get_route_by_id(db, route_id=waypoint.route_id)
+    roles = [ru.role_details.role for ru in current_user.roles]
+    if "ADMIN" not in roles and route.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tienes permisos para realizar esta acción")
+
+    return MediaStorageService.get_image_url(waypoint.url_photo)
