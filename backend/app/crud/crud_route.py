@@ -23,7 +23,25 @@ def create_route(db: Session, route_in: RouteCreate) -> Route:
     db.commit()
     db.refresh(db_route)
 
+    if route_in.waypoints:
+        for wp in route_in.waypoints:
+            db_wp = Waypoint(
+                route_id=db_route.id,
+                address=wp.address,
+                latitud=wp.latitud,
+                longitud=wp.longitud,
+                order_sequence=wp.order_sequence,
+                client_id=wp.client_id,
+                status=wp.status or "PENDIENTE",
+                url_photo=wp.url_photo,
+                comment=wp.comment
+            )
+            db.add(db_wp)
+        db.commit()
+        db.refresh(db_route)
+
     return db_route
+
 
 def update_route(db: Session, db_route: Route, route_in: RouteUpdate) -> Route:
     update_data = route_in.model_dump(exclude_unset=True)

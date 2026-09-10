@@ -19,6 +19,21 @@ export const routeService = {
     return apiClient.delete(`/routes/${routeId}`);
   },
 
+  createWaypoint(
+    routeId: number,
+    waypoint: {
+      address: string;
+      latitud?: number;
+      longitud?: number;
+      order_sequence: number;
+      client_id: number;
+      status?: string;
+      comment?: string;
+    }
+  ): Promise<Waypoint> {
+    return apiClient.post<Waypoint>(`/routes/${routeId}/waypoints`, waypoint);
+  },
+
   updateWaypointStatus(
     waypointId: number,
     status: 'VISITA' | 'CANCELADA',
@@ -30,3 +45,4 @@ export const routeService = {
     });
   },
 };
+
