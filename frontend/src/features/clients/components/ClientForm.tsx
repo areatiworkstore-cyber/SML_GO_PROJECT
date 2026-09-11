@@ -202,6 +202,10 @@ export const ClientForm: React.FC<ClientFormProps> = ({
                 slotProps={{
                   input: {
                     endAdornment: loadingCode ? <CircularProgress size={20} color="inherit" /> : null,
+                    readOnly: true,
+                    sx: {
+                      color: 'text.secondary'
+                    }
                   },
                 }}
               />

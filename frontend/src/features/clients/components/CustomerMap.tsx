@@ -105,13 +105,11 @@ export const CustomerMap: React.FC = () => {
       mapRef.current = L.map(mapContainerRef.current).setView([-9.19, -75.0152], 6);
     }
 
-    // Configurar capa de tiles según tema
-    // CartoDB Voyager para Light Mode y CartoDB Dark Matter para Dark Mode
-    const tileUrl = isDark
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+    // Capa de tiles gratuita de OpenStreetMap (no requiere API Key)
+    const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-    const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
 
     // Remover capas previas
     mapRef.current.eachLayer((layer: any) => {
@@ -196,39 +194,35 @@ export const CustomerMap: React.FC = () => {
     }
   };
 
-  // Función para imprimir el mapa abarcando todos los marcadores
+  // Función para imprimir el mapa respetando exactamente el zoom y la vista actual
   const handlePrintMap = () => {
-    if (!mapRef.current || !leafletInstanceRef.current || clients.length === 0) return;
+    if (!mapRef.current) return;
 
-    const L = leafletInstanceRef.current;
-    const bounds = L.latLngBounds([]);
-    clients.forEach((client) => {
-      bounds.extend([client.latitud as number, client.longitud as number]);
-    });
+    // Capturar el centro y nivel de zoom EXACTOS que el usuario tiene en pantalla
+    const currentCenter = mapRef.current.getCenter();
+    const currentZoom = mapRef.current.getZoom();
 
     // Añadir clase de impresión para aplicar los estilos CSS
     document.body.classList.add('printing-leaflet-map');
 
-    // Permitir cambio de tamaño y reajuste de límites
     setTimeout(() => {
-      mapRef.current.invalidateSize();
-      mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+      mapRef.current.invalidateSize({ animate: false });
+      mapRef.current.setView(currentCenter, currentZoom, { animate: false });
 
-      // Esperar brevemente a que rendericen las tiles con el nuevo tamaño de página
       setTimeout(() => {
         window.print();
 
         // Quitar clase de impresión
         document.body.classList.remove('printing-leaflet-map');
 
-        // Restaurar estado original del mapa
         setTimeout(() => {
-          mapRef.current.invalidateSize();
-          mapRef.current.fitBounds(bounds, { padding: [30, 30] });
-        }, 150);
-      }, 600);
-    }, 150);
+          mapRef.current.invalidateSize({ animate: false });
+          mapRef.current.setView(currentCenter, currentZoom, { animate: false });
+        }, 100);
+      }, 300);
+    }, 100);
   };
+
 
   const filteredClients = clients.filter(
     (c) =>
@@ -394,6 +388,11 @@ export const CustomerMap: React.FC = () => {
 
               /* Sobrescribir estilos específicos de impresión */
               @media print {
+                @page {
+                  margin: 0;
+                  size: auto;
+                }
+
                 /* Ocultar barra lateral de la app, header del panel, sidebar de clientes y botón */
                 .MuiAppBar-root,
                 .MuiDrawer-root,
@@ -416,7 +415,7 @@ export const CustomerMap: React.FC = () => {
                   display: block !important;
                   position: static !important;
                   box-shadow: none !important;
-                  overflow: visible !important;
+                  overflow: hidden !important;
                 }
 
                 #print-map-wrapper, #print-map-wrapper *, #print-map-target, #print-map-target * {
@@ -436,7 +435,10 @@ export const CustomerMap: React.FC = () => {
                   border-radius: 0 !important;
                   box-shadow: none !important;
                   background-color: #ffffff !important;
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
                 }
+
 
                 #print-map-target {
                   width: 100% !important;
