@@ -13,7 +13,7 @@ import org.smlpartners.smlgo.ui.dashboard.MapViewModel
 val viewModelModule = module {
     viewModel { LoginViewModel(get(), get(), get(), get()) }
     viewModel { ClientViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { RouteViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { RouteViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ScheduleViewModel(get(), get(), get(), get()) }
     viewModel { DashboardViewModel(get(), get()) }
     viewModel { ProfileViewModel(get(), get(), get(), get()) }

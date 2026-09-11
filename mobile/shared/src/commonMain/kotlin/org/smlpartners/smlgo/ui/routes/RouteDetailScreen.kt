@@ -1,6 +1,8 @@
 package org.smlpartners.smlgo.ui.routes
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -12,11 +14,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import org.koin.compose.viewmodel.koinViewModel
 import org.smlpartners.smlgo.domain.model.Waypoint
 import org.smlpartners.smlgo.domain.model.WaypointStatus
+import org.smlpartners.smlgo.core.error.GlobalErrorHandler
+import org.smlpartners.smlgo.core.network.ApiError
+import org.smlpartners.smlgo.ui.routes.components.FullPhotoViewerModal
+import org.smlpartners.smlgo.ui.routes.components.VisitAuditDialog
 import org.smlpartners.smlgo.ui.shared.components.*
 import org.smlpartners.smlgo.ui.shared.theme.Spacing
 import org.smlpartners.smlgo.ui.shared.theme.Radius
@@ -24,80 +33,163 @@ import org.smlpartners.smlgo.ui.shared.theme.Success
 
 @Composable
 fun RouteDetailScreen(
-    routeId : Int,
-    onBack  : () -> Unit
+    routeId       : Int,
+    onBack        : () -> Unit,
+    onGetLocation : (onResult: (Double?, Double?) -> Unit) -> Unit = { callback -> callback(null, null) }
 ) {
     val viewModel  : RouteViewModel = koinViewModel()
     val detailState by viewModel.detailState.collectAsState()
 
     LaunchedEffect(routeId) { viewModel.loadRouteDetail(routeId) }
 
-    Scaffold(
-        topBar = {
-            SMLGoTopBar(
-                title  = detailState.route?.name ?: "Detalle de ruta",
-                onBack = onBack
-            )
-        }
-    ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            when {
-                detailState.isLoading        -> LoadingOverlay()
-                detailState.route == null    -> EmptyRouteDetail()
-                else -> {
-                    val route = detailState.route!!
-                    LazyColumn(
-                        contentPadding      = PaddingValues(Spacing.md),
-                        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
-                    ) {
-                        // ── Encabezado ────────────────────────────────
-                        item {
-                            RouteHeaderCard(route = route)
-                        }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                SMLGoTopBar(
+                    title  = detailState.route?.name ?: "Detalle de ruta",
+                    onBack = onBack
+                )
+            }
+        ) { padding ->
+            Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+                when {
+                    detailState.isLoading     -> LoadingOverlay()
+                    detailState.route == null -> EmptyRouteDetail()
+                    else -> {
+                        val route = detailState.route!!
+                        LazyColumn(
+                            contentPadding      = PaddingValues(Spacing.md),
+                            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+                        ) {
+                            // ── Encabezado ────────────────────────────────
+                            item {
+                                RouteHeaderCard(route = route)
+                            }
 
-                        // ── Progreso ──────────────────────────────────
-                        item {
-                            RouteProgressCard(route = route)
-                        }
+                            // ── Progreso ──────────────────────────────────
+                            item {
+                                RouteProgressCard(route = route)
+                            }
 
-                        // ── Título waypoints ──────────────────────────
-                        item {
-                            Text(
-                                text     = "Paradas (${route.waypoints.size})",
-                                style    = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(vertical = Spacing.xs)
-                            )
-                        }
+                            // ── Título waypoints ──────────────────────────
+                            item {
+                                Text(
+                                    text       = "Paradas (${route.waypoints.size})",
+                                    style      = MaterialTheme.typography.titleMedium,
+                                    color      = Color.Black,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier   = Modifier.padding(vertical = Spacing.xs)
+                                )
+                            }
 
-                        // ── Lista de waypoints ────────────────────────
-                        itemsIndexed(
-                            items = route.waypoints.sortedBy { it.orderSequence },
-                            key   = { _, w -> w.id }
-                        ) { index, waypoint ->
-                            WaypointCard(
-                                waypoint  = waypoint,
-                                index     = index,
-                                isLast    = index == route.waypoints.size - 1,
-                                onVisit   = { comment ->
-                                    viewModel.markWaypointAsVisited(
-                                        routeId    = routeId,
-                                        waypointId = waypoint.id,
-                                        comment    = comment
-                                    )
-                                },
-                                onCancel  = { comment ->
-                                    viewModel.cancelWaypoint(
-                                        routeId    = routeId,
-                                        waypointId = waypoint.id,
-                                        comment    = comment
-                                    )
-                                }
-                            )
-                        }
+                            // ── Lista de waypoints ────────────────────────
+                            itemsIndexed(
+                                items = route.waypoints.sortedBy { it.orderSequence },
+                                key   = { _, w -> w.id }
+                            ) { index, waypoint ->
+                                WaypointCard(
+                                    waypoint          = waypoint,
+                                    index             = index,
+                                    isLast            = index == route.waypoints.size - 1,
+                                    isSubmittingVisit = detailState.isSubmittingVisit,
+                                    isLoadingPhoto    = detailState.loadingPhotoForWaypointId == waypoint.id,
+                                    onVisitWithAudit  = { comment, photoBytes, filename ->
+                                        onGetLocation { lat, lng ->
+                                            if (lat != null && lng != null) {
+                                                viewModel.submitWaypointVisitWithAudit(
+                                                    routeId    = routeId,
+                                                    waypointId = waypoint.id,
+                                                    comment    = comment,
+                                                    photoBytes = photoBytes,
+                                                    filename   = filename,
+                                                    latitude   = lat,
+                                                    longitude  = lng
+                                                )
+                                            } else {
+                                                GlobalErrorHandler.emit(
+                                                    ApiError.UnknownError("No se pudo obtener la ubicación GPS actual del vendedor. Verifica que los servicios de ubicación estén activados.")
+                                                )
+                                            }
+                                        }
+                                    },
+                                    onCancel  = { comment ->
+                                        viewModel.cancelWaypoint(
+                                            routeId    = routeId,
+                                            waypointId = waypoint.id,
+                                            comment    = comment
+                                        )
+                                    },
+                                    onViewPhoto = {
+                                        viewModel.loadWaypointPhotoUrl(waypoint.id)
+                                    }
+                                )
+                            }
 
-                        item { Spacer(Modifier.height(Spacing.xl)) }
+                            item { Spacer(Modifier.height(Spacing.xl)) }
+                        }
                     }
                 }
+            }
+        }
+
+        // ── Overlay global "Subiendo foto..." ─────────────────────────────
+        if (detailState.isUploadingPhoto) {
+            PhotoUploadOverlay()
+        }
+    }
+
+    // ── Visor de foto cargada desde el servidor ───────────────────────────
+    val loadedUrl = detailState.loadedPhotoUrl
+    val loadingForId = detailState.loadingPhotoForWaypointId
+    if (loadedUrl != null) {
+        val waypointForPhoto = detailState.route?.waypoints?.find {
+            !it.urlPhoto.isNullOrBlank()
+        }
+        FullPhotoViewerModal(
+            photoUrl   = loadedUrl,
+            clientName = waypointForPhoto?.clientName,
+            onDismiss  = { viewModel.clearLoadedPhotoUrl() }
+        )
+    }
+}
+
+// ── Overlay de subida de foto ─────────────────────────────────────────────
+
+@Composable
+private fun PhotoUploadOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.65f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            shape  = RoundedCornerShape(Radius.lg),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier            = Modifier.padding(horizontal = 40.dp, vertical = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Spacing.md)
+            ) {
+                CircularProgressIndicator(
+                    modifier    = Modifier.size(52.dp),
+                    color       = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 4.dp
+                )
+                Text(
+                    text       = "Subiendo imagen...",
+                    style      = MaterialTheme.typography.titleMedium,
+                    color      = Color.Black,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text  = "Por favor espera, estamos guardando\nla evidencia en el servidor.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Black,
+                    fontSize = 12.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
             }
         }
     }
@@ -120,25 +212,27 @@ private fun RouteHeaderCard(route: org.smlpartners.smlgo.domain.model.Route) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text  = route.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    text       = route.name,
+                    style      = MaterialTheme.typography.titleMedium,
+                    color      = Color.Black,
+                    fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(Spacing.xs))
                 Row(
-                    verticalAlignment    = Alignment.CenterVertically,
+                    verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
                 ) {
                     Icon(
                         imageVector        = Icons.Filled.CalendarMonth,
                         contentDescription = null,
                         modifier           = Modifier.size(14.dp),
-                        tint               = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        tint               = Color.Black
                     )
                     Text(
-                        text  = route.scheduledDate.toString(),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        text       = route.scheduledDate.toString(),
+                        style      = MaterialTheme.typography.bodySmall,
+                        color      = Color.Black,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
@@ -146,16 +240,16 @@ private fun RouteHeaderCard(route: org.smlpartners.smlgo.domain.model.Route) {
             Surface(
                 shape = RoundedCornerShape(Radius.full),
                 color = if (route.active)
-                    Success.copy(alpha = 0.15f)
+                    Success.copy(alpha = 0.2f)
                 else
-                    MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                    MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
             ) {
                 Text(
-                    text     = if (route.active) "Activa" else "Inactiva",
-                    style    = MaterialTheme.typography.labelSmall,
-                    color    = if (route.active) Success
-                    else MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs)
+                    text       = if (route.active) "Activa" else "Inactiva",
+                    style      = MaterialTheme.typography.labelSmall,
+                    color      = if (route.active) Success else MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold,
+                    modifier   = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs)
                 )
             }
         }
@@ -176,13 +270,15 @@ private fun RouteProgressCard(route: org.smlpartners.smlgo.domain.model.Route) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text  = "Progreso",
-                    style = MaterialTheme.typography.titleSmall
+                    text       = "Progreso",
+                    style      = MaterialTheme.typography.titleSmall,
+                    color      = Color.Black,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text  = "${(route.progress * 100).toInt()}%",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
+                    text       = "${(route.progress * 100).toInt()}%",
+                    style      = MaterialTheme.typography.titleSmall,
+                    color      = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -201,7 +297,7 @@ private fun RouteProgressCard(route: org.smlpartners.smlgo.domain.model.Route) {
                 WaypointStatusStat(
                     count = route.pendingCount,
                     label = "Pendientes",
-                    color = MaterialTheme.colorScheme.outline
+                    color = Color.Black
                 )
                 WaypointStatusStat(
                     count = route.visitedCount,
@@ -232,9 +328,10 @@ private fun WaypointStatusStat(
             fontWeight = FontWeight.Bold
         )
         Text(
-            text  = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            text       = label,
+            style      = MaterialTheme.typography.labelSmall,
+            color      = Color.Black,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
@@ -243,20 +340,23 @@ private fun WaypointStatusStat(
 
 @Composable
 private fun WaypointCard(
-    waypoint : Waypoint,
-    index    : Int,
-    isLast   : Boolean,
-    onVisit  : (String?) -> Unit,
-    onCancel : (String?) -> Unit
+    waypoint          : Waypoint,
+    index             : Int,
+    isLast            : Boolean,
+    isSubmittingVisit : Boolean,
+    isLoadingPhoto    : Boolean,
+    onVisitWithAudit  : (comment: String?, photoBytes: ByteArray?, filename: String?) -> Unit,
+    onCancel          : (String?) -> Unit,
+    onViewPhoto       : () -> Unit
 ) {
-    var expanded        by remember { mutableStateOf(false) }
-    var showVisitDialog  by remember { mutableStateOf(false) }
-    var showCancelDialog by remember { mutableStateOf(false) }
+    var expanded          by remember { mutableStateOf(false) }
+    var showVisitDialog   by remember { mutableStateOf(false) }
+    var showCancelDialog  by remember { mutableStateOf(false) }
 
     // Color e ícono según estado
     val (statusColor, statusIcon) = when (waypoint.status) {
         WaypointStatus.PENDIENTE  -> Pair(
-            MaterialTheme.colorScheme.outline,
+            Color.Black,
             Icons.Filled.RadioButtonUnchecked
         )
         WaypointStatus.VISITA     -> Pair(
@@ -297,9 +397,9 @@ private fun WaypointCard(
                         .height(Spacing.lg)
                         .padding(vertical = 2.dp)
                 ) {
-                    Divider(
-                        modifier  = Modifier.fillMaxHeight().width(2.dp),
-                        color     = MaterialTheme.colorScheme.outlineVariant
+                    HorizontalDivider(
+                        modifier = Modifier.fillMaxHeight().width(2.dp),
+                        color    = MaterialTheme.colorScheme.outlineVariant
                     )
                 }
             }
@@ -314,15 +414,15 @@ private fun WaypointCard(
             shape    = RoundedCornerShape(Radius.md),
             colors   = CardDefaults.cardColors(
                 containerColor = when (waypoint.status) {
-                    WaypointStatus.VISITA    -> Success.copy(alpha = 0.05f)
-                    WaypointStatus.CANCELADA -> MaterialTheme.colorScheme.error.copy(alpha = 0.05f)
+                    WaypointStatus.VISITA    -> Success.copy(alpha = 0.1f)
+                    WaypointStatus.CANCELADA -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
                     else                     -> MaterialTheme.colorScheme.surface
                 }
             )
         ) {
             Column(modifier = Modifier.padding(Spacing.md)) {
 
-                // Número de orden + nombre del cliente
+                // Número de orden + nombre del cliente + Badge
                 Row(
                     modifier          = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -334,27 +434,54 @@ private fun WaypointCard(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
-                                text  = "${index + 1}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
+                                text       = "${index + 1}",
+                                style      = MaterialTheme.typography.labelSmall,
+                                color      = Color.Black,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
                     Spacer(Modifier.width(Spacing.sm))
                     Text(
-                        text     = waypoint.clientName ?: "Cliente ${waypoint.clientId}",
-                        style    = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.weight(1f)
+                        text       = waypoint.clientName ?: "Cliente ${waypoint.clientId}",
+                        style      = MaterialTheme.typography.titleSmall,
+                        color      = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        modifier   = Modifier.weight(1f)
                     )
-                    // Chevron solo si está pendiente
-                    if (waypoint.isPending) {
+
+                    if (waypoint.isVisited) {
+                        Surface(
+                            shape = RoundedCornerShape(Radius.full),
+                            color = Success.copy(alpha = 0.2f)
+                        ) {
+                            Row(
+                                modifier          = Modifier.padding(horizontal = Spacing.xs, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector        = Icons.Filled.Verified,
+                                    contentDescription = null,
+                                    tint               = Success,
+                                    modifier           = Modifier.size(12.dp)
+                                )
+                                Spacer(Modifier.width(2.dp))
+                                Text(
+                                    text       = "Auditado",
+                                    style      = MaterialTheme.typography.labelSmall,
+                                    color      = Success,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    } else if (waypoint.isPending) {
                         Icon(
                             imageVector        = if (expanded)
                                 Icons.Filled.ExpandLess
                             else
                                 Icons.Filled.ExpandMore,
                             contentDescription = null,
-                            tint               = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                            tint               = Color.Black,
                             modifier           = Modifier.size(20.dp)
                         )
                     }
@@ -367,43 +494,95 @@ private fun WaypointCard(
                         imageVector        = Icons.Filled.LocationOn,
                         contentDescription = null,
                         modifier           = Modifier.size(14.dp),
-                        tint               = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        tint               = MaterialTheme.colorScheme.primary
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        text  = waypoint.address,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        text       = waypoint.address,
+                        style      = MaterialTheme.typography.bodySmall,
+                        color      = Color.Black,
+                        fontWeight = FontWeight.Medium
                     )
                 }
 
-                // Hora de visita si fue visitado
-                if (waypoint.isVisited && waypoint.visitedAt != null) {
+                // Datos de Auditoría si ya fue visitado
+                if (waypoint.isVisited) {
                     Spacer(Modifier.height(Spacing.xs))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector        = Icons.Filled.AccessTime,
-                            contentDescription = null,
-                            modifier           = Modifier.size(14.dp),
-                            tint               = Success
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            text  = "Visitado: ${waypoint.visitedAt}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Success
-                        )
+                    if (waypoint.visitedAt != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector        = Icons.Filled.AccessTime,
+                                contentDescription = null,
+                                modifier           = Modifier.size(14.dp),
+                                tint               = Success
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text       = "Visitado: ${waypoint.visitedAt}",
+                                style      = MaterialTheme.typography.labelSmall,
+                                color      = Success,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
-                }
 
-                // Comentario
-                if (!waypoint.comment.isNullOrBlank()) {
-                    Spacer(Modifier.height(Spacing.xs))
-                    Text(
-                        text  = waypoint.comment,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
+                    // Observación de auditoría
+                    if (!waypoint.comment.isNullOrBlank()) {
+                        Spacer(Modifier.height(Spacing.xs))
+                        Row(verticalAlignment = Alignment.Top) {
+                            Icon(
+                                imageVector        = Icons.Filled.Comment,
+                                contentDescription = null,
+                                modifier           = Modifier.size(14.dp).padding(top = 2.dp),
+                                tint               = Color.Black
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text       = "Obs: ${waypoint.comment}",
+                                style      = MaterialTheme.typography.bodySmall,
+                                color      = Color.Black,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Evidencia fotográfica — botón para cargar foto del servidor
+                    if (!waypoint.urlPhoto.isNullOrBlank()) {
+                        Spacer(Modifier.height(Spacing.xs))
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(Radius.sm))
+                                .clickable(enabled = !isLoadingPhoto) { onViewPhoto() },
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Row(
+                                modifier          = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (isLoadingPhoto) {
+                                    CircularProgressIndicator(
+                                        modifier    = Modifier.size(14.dp),
+                                        strokeWidth = 2.dp,
+                                        color       = MaterialTheme.colorScheme.primary
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector        = Icons.Filled.CameraAlt,
+                                        contentDescription = null,
+                                        tint               = MaterialTheme.colorScheme.primary,
+                                        modifier           = Modifier.size(14.dp)
+                                    )
+                                }
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text       = if (isLoadingPhoto) "Cargando foto..." else "Ver foto de evidencia",
+                                    style      = MaterialTheme.typography.labelSmall,
+                                    color      = Color.Black,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // ── Acciones expandibles (solo PENDIENTE) ─────────────
@@ -429,7 +608,7 @@ private fun WaypointCard(
                                     modifier           = Modifier.size(16.dp)
                                 )
                                 Spacer(Modifier.width(4.dp))
-                                Text("Cancelar")
+                                Text("Cancelar", color = Color.Red, fontWeight = FontWeight.Bold)
                             }
                             Button(
                                 onClick  = { showVisitDialog = true },
@@ -441,10 +620,11 @@ private fun WaypointCard(
                                 Icon(
                                     imageVector        = Icons.Filled.Check,
                                     contentDescription = null,
-                                    modifier           = Modifier.size(16.dp)
+                                    modifier           = Modifier.size(16.dp),
+                                    tint               = Color.White
                                 )
                                 Spacer(Modifier.width(4.dp))
-                                Text("Visitar")
+                                Text("Visitar", color = Color.White, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -453,14 +633,15 @@ private fun WaypointCard(
         }
     }
 
-    // ── Diálogo confirmar visita ──────────────────────────────────────────
+    // ── Diálogo de Auditoría de Visita ─────────────────────────────────────
     if (showVisitDialog) {
-        WaypointActionDialog(
-            title        = "Confirmar visita",
-            message      = "¿Marcar a ${waypoint.clientName ?: "este cliente"} como visitado?",
-            confirmText  = "Confirmar visita",
-            confirmColor = Success,
-            onConfirm    = { comment -> onVisit(comment); showVisitDialog = false },
+        VisitAuditDialog(
+            waypoint     = waypoint,
+            isSubmitting = isSubmittingVisit,
+            onConfirm    = { comment, photoBytes, filename ->
+                onVisitWithAudit(comment, photoBytes, filename)
+                showVisitDialog = false
+            },
             onDismiss    = { showVisitDialog = false }
         )
     }
@@ -493,16 +674,22 @@ private fun WaypointActionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title   = { Text(title) },
+        title   = { Text(title, color = Color.Black, fontWeight = FontWeight.Bold) },
         text    = {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                Text(message)
+                Text(message, color = Color.Black, fontWeight = FontWeight.Medium)
                 OutlinedTextField(
                     value         = comment,
                     onValueChange = { comment = it },
-                    label         = { Text("Comentario (opcional)") },
+                    label         = { Text("Motivo / Comentario (opcional)", color = Color.Black, fontWeight = FontWeight.SemiBold) },
                     shape         = RoundedCornerShape(Radius.md),
-                    modifier      = Modifier.fillMaxWidth()
+                    modifier      = Modifier.fillMaxWidth(),
+                    colors        = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor    = Color.Black,
+                        unfocusedTextColor  = Color.Black,
+                        focusedLabelColor   = Color.Black,
+                        unfocusedLabelColor = Color.Black
+                    )
                 )
             }
         },
@@ -511,11 +698,11 @@ private fun WaypointActionDialog(
                 onClick = { onConfirm(comment.ifBlank { null }) },
                 colors  = ButtonDefaults.buttonColors(containerColor = confirmColor)
             ) {
-                Text(confirmText)
+                Text(confirmText, color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text("Cancelar", color = Color.Black, fontWeight = FontWeight.Bold) }
         }
     )
 }
@@ -534,9 +721,10 @@ private fun EmptyRouteDetail() {
             )
             Spacer(Modifier.height(Spacing.md))
             Text(
-                text  = "Ruta no encontrada",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                text       = "Ruta no encontrada",
+                style      = MaterialTheme.typography.bodyLarge,
+                color      = Color.Black,
+                fontWeight = FontWeight.Bold
             )
         }
     }

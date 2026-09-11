@@ -23,14 +23,18 @@ class WaypointRepositoryImpl(
         routeId: Int,
         waypointId: Int,
         status: WaypointStatus,
-        comment: String?
+        comment: String?,
+        latitude: Double?,
+        longitude: Double?
     ): ApiResult<Waypoint> =
         safeApiCall {
             api.updateWaypointStatus(
                 waypointId = waypointId,
                 request    = WaypointStatusRequestDto(
-                    status  = status.name,
-                    comment = comment
+                    status    = status.name,
+                    comment   = comment,
+                    latitude  = latitude,
+                    longitude = longitude
                 )
             ).toDomain()
         }
@@ -46,5 +50,10 @@ class WaypointRepositoryImpl(
                 imageBytes = imageBytes,
                 filename = filename
             ).toDomain()
+        }
+
+    override suspend fun getWaypointPhotoUrl(waypointId: Int): ApiResult<String> =
+        safeApiCall {
+            api.getWaypointPhotoUrl(waypointId)
         }
 }

@@ -34,7 +34,7 @@ sealed class Screen {
 
 @Composable
 fun AppNavigation(
-    onGetLocation: (onResult: (Double, Double) -> Unit) -> Unit = { _ -> },
+    onGetLocation: (onResult: (Double?, Double?) -> Unit) -> Unit = { _ -> },
 ) {
     val navigationStack = remember { mutableStateListOf<Screen>(Screen.Login) }
     val currentScreen   = navigationStack.lastOrNull() ?: Screen.Login
@@ -97,8 +97,9 @@ fun AppNavigation(
             onBack    = { navigateBack() }
         )
         is Screen.RouteDetail -> RouteDetailScreen(
-            routeId = screen.routeId,
-            onBack  = { navigateBack() }
+            routeId       = screen.routeId,
+            onGetLocation = onGetLocation,
+            onBack        = { navigateBack() }
         )
         Screen.Schedules     -> ScheduleScreen(
             onBack = { navigateBack() }

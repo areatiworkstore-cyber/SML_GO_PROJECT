@@ -3,6 +3,7 @@ package org.smlpartners.smlgo.core.network
 import com.smlpartners.smlgo.core.BuildConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.DefaultRequest
+import io.ktor.client.plugins.HttpRedirect
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -19,7 +20,7 @@ import org.smlpartners.smlgo.core.utils.platformName
  *
  * El backend usa cookies HttpOnly: en cada request se inyecta el header
  * "Cookie: access_token=<jwt>" obtenido del tokenProvider(), simulando el
- * comportamiento del navegador. El plugin Auth (Bearer) ya no se usa.
+ * comportamiento del navegador.
  *
  * @param tokenProvider  lambda que devuelve el JWT guardado en SecureStorage
  * @param onTokenExpired callback para cerrar sesión cuando el backend retorna 401
@@ -51,6 +52,11 @@ fun createHttpClient(
             retryOnServerErrors(maxRetries = 3)
             retryOnException(maxRetries = 3, retryOnTimeout = true)
             exponentialDelay(base = 2.0, maxDelayMs = 10_000)
+        }
+
+        // ── Soporte de redirecciones (307/308 de FastAPI) ──────────────────────
+        install(HttpRedirect) {
+            checkHttpMethod = false // Conserva POST/PUT en redirecciones 307/308
         }
 
         // ── Cookie-based auth — el tokenProvider() se evalúa por cada request ──

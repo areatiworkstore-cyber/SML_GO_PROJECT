@@ -69,6 +69,7 @@ kotlin {
             implementation(libs.play.services.maps)
             implementation(libs.maps.compose)
             implementation(libs.play.services.location)
+            implementation(libs.androidx.activity.compose)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -100,6 +101,9 @@ kotlin {
             //Implementacion de la libreria de Iconos
             implementation(libs.compose.material.icons)
             implementation(libs.compose.material.icons.extended)
+            //Coil para carga de imágenes remotas (KMP)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -142,7 +146,9 @@ val generateBuildConfig by tasks.registering {
 }
 
 // ── Hace que cualquier compilación dependa de la tarea ────────────────────
-tasks.matching { it.name.startsWith("compileKotlin") }.configureEach {
+tasks.matching {
+    it.name.contains("compile", ignoreCase = true)
+}.configureEach {
     dependsOn(generateBuildConfig)
 }
 

@@ -44,6 +44,7 @@ val useCaseModule = module {
     factory { CreateWaypointUseCase(get()) }
     factory { UpdateWaypointStatusUseCase(get()) }
     factory { UploadWaypointPhotoUseCase(get()) }
+    factory { GetWaypointPhotoUrlUseCase(get()) }
 
     // ── Schedule ──────────────────────────────────────────────────────
     factory { GetSchedulesUseCase(get()) }

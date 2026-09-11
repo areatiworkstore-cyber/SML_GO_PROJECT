@@ -18,13 +18,13 @@ class RouteApiService(private val manager: HttpClientManager) {
     private val client get() = manager.client
 
     suspend fun getRoutes(): List<RouteDto> =
-        client.get("routes").body()
+        client.get("routes/").body()
 
     suspend fun getRouteById(id: Int): RouteDto =
         client.get("routes/$id").body()
 
     suspend fun createRoute(request: RouteCreateDto): RouteDto =
-        client.post("routes") {
+        client.post("routes/") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()

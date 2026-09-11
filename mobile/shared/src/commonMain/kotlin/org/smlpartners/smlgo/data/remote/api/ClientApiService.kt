@@ -11,9 +11,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import org.smlpartners.smlgo.data.remote.dto.NextCodeDto
-
 import org.smlpartners.smlgo.core.network.HttpClientManager
-
 import io.ktor.client.request.parameter
 
 class ClientApiService(private val manager: HttpClientManager) {
@@ -23,12 +21,11 @@ class ClientApiService(private val manager: HttpClientManager) {
         client.get("clients/next-code").body()
 
     suspend fun getClients(userId: Int? = null): List<ClientDto> =
-        client.get("clients") {
+        client.get("clients/") {
             userId?.let {
                 parameter("user_id", it)
             }
         }.body()
-
 
     suspend fun getClientsWithLocation(id: Int): String? =
         client.get("clients/$id/maps-direct").body()
@@ -37,7 +34,7 @@ class ClientApiService(private val manager: HttpClientManager) {
         client.get("clients/$id").body()
 
     suspend fun createClient(request: ClientRequestDto): ClientDto =
-        client.post("clients") {
+        client.post("clients/") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()

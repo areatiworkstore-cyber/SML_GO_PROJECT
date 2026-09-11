@@ -45,5 +45,7 @@ data class WaypointUpdateDto(
 data class WaypointStatusRequestDto(
     @SerialName("status")           val status          : String,
     @SerialName("url_photo")        val urlPhoto        : String?  = null,
-    @SerialName("comment")          val comment         : String?
+    @SerialName("comment")          val comment         : String?  = null,
+    @SerialName("latitud")          val latitude        : Double?  = null,
+    @SerialName("longitud")         val longitude       : Double?  = null
 )

@@ -19,14 +19,19 @@ import org.smlpartners.smlgo.core.utils.LocationResult
 class MainActivity : ComponentActivity() {
 
     private val locationProvider = LocationProvider()
-    private var pendingLocationCallback: ((Double, Double) -> Unit)? = null
+    private var pendingLocationCallback: ((Double?, Double?) -> Unit)? = null
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                 permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (granted) fetchLocation()
+        if (granted) {
+            fetchLocation()
+        } else {
+            pendingLocationCallback?.invoke(null, null)
+            pendingLocationCallback = null
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,10 +74,8 @@ class MainActivity : ComponentActivity() {
                     pendingLocationCallback?.invoke(result.latitude, result.longitude)
                     pendingLocationCallback = null
                 }
-                is LocationResult.Error          -> {
-                    pendingLocationCallback = null
-                }
-                is LocationResult.PermissionDenied -> {
+                is LocationResult.Error, is LocationResult.PermissionDenied -> {
+                    pendingLocationCallback?.invoke(null, null)
                     pendingLocationCallback = null
                 }
             }

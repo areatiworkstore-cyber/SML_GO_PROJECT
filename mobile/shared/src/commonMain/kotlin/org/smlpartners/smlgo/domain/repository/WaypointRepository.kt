@@ -10,11 +10,14 @@ interface WaypointRepository {
         routeId    : Int,
         waypointId : Int,
         status     : WaypointStatus,
-        comment    : String?
+        comment    : String? = null,
+        latitude   : Double? = null,
+        longitude  : Double? = null
     ): ApiResult<Waypoint>
     suspend fun uploadWaypointPhoto(
         waypointId : Int,
         imageBytes : ByteArray,
         filename   : String
     ): ApiResult<Waypoint>
+    suspend fun getWaypointPhotoUrl(waypointId: Int): ApiResult<String>
 }

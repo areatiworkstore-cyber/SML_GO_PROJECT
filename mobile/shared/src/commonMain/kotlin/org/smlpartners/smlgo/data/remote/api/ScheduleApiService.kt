@@ -18,19 +18,19 @@ class ScheduleApiService(private val manager: HttpClientManager) {
     private val client get() = manager.client
 
     suspend fun getClientSchedules(): List<ClientScheduleDto> =
-        client.get("client_schedules").body()
+        client.get("client_schedules/").body()
 
     suspend fun getClientScheduleById(id: Int): ClientScheduleDto =
         client.get("client_schedules/$id").body()
 
     suspend fun getClientSchedulesByWeek(start: String, end: String): List<ClientScheduleDto> =
-        client.get("client_schedules") {
+        client.get("client_schedules/") {
             parameter("start", start)
             parameter("end",   end)
         }.body()
 
     suspend fun createClientSchedule(request: ClientScheduleRequestDto): ClientScheduleDto =
-        client.post("client_schedules") {
+        client.post("client_schedules/") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()

@@ -23,6 +23,7 @@ import org.smlpartners.smlgo.domain.usecase.route.WaypointInput
 import org.smlpartners.smlgo.domain.usecase.waypoint.CreateWaypointUseCase
 import org.smlpartners.smlgo.domain.usecase.waypoint.UpdateWaypointStatusUseCase
 import org.smlpartners.smlgo.domain.usecase.waypoint.UploadWaypointPhotoUseCase
+import org.smlpartners.smlgo.domain.usecase.waypoint.GetWaypointPhotoUrlUseCase
 
 data class RouteListUiState(
     val isLoading : Boolean      = true,
@@ -39,8 +40,13 @@ data class RouteFormUiState(
 )
 
 data class RouteDetailUiState(
-    val isLoading : Boolean   = false,
-    val route     : Route?    = null,
+    val isLoading         : Boolean   = false,
+    val isSubmittingVisit : Boolean   = false,
+    val isUploadingPhoto  : Boolean   = false,
+    val route             : Route?    = null,
+    // URL pública de la foto cargada desde el servidor (para el visor)
+    val loadedPhotoUrl    : String?   = null,
+    val loadingPhotoForWaypointId : Int? = null,
 )
 
 class RouteViewModel(
@@ -51,7 +57,8 @@ class RouteViewModel(
     private val getClientsUseCase                 : GetClientsUseCase,
     private val createWaypointUseCase             : CreateWaypointUseCase,
     private val updateWaypointStatusUseCase       : UpdateWaypointStatusUseCase,
-    private val uploadWaypointPhotoUseCase        : UploadWaypointPhotoUseCase
+    private val uploadWaypointPhotoUseCase        : UploadWaypointPhotoUseCase,
+    private val getWaypointPhotoUrlUseCase        : GetWaypointPhotoUrlUseCase
 ) : ViewModel() {
 
     private val _listState   = MutableStateFlow(RouteListUiState())
@@ -154,6 +161,70 @@ class RouteViewModel(
 
     // ── Waypoints en campo ────────────────────────────────────────────
 
+    fun submitWaypointVisitWithAudit(
+        routeId    : Int,
+        waypointId : Int,
+        comment    : String?,
+        photoBytes : ByteArray?,
+        filename   : String?,
+        latitude   : Double?,
+        longitude  : Double?,
+        onComplete : () -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _detailState.update { it.copy(isSubmittingVisit = true) }
+
+            // 1. Actualizar estado a VISITA con el comentario y la ubicación GPS actual del vendedor
+            when (val statusResult = updateWaypointStatusUseCase(
+                routeId    = routeId,
+                waypointId = waypointId,
+                status     = WaypointStatus.VISITA,
+                comment    = comment,
+                latitude   = latitude,
+                longitude  = longitude
+            )) {
+                is ApiResult.Success -> {
+                    var updatedWaypoint = statusResult.data
+
+                    // 2. Si se adjuntó foto de evidencia, subirla
+                    if (photoBytes != null && photoBytes.isNotEmpty()) {
+                        val photoName = filename ?: "visita_${waypointId}.jpg"
+                        _detailState.update { it.copy(isSubmittingVisit = false, isUploadingPhoto = true) }
+                        when (val photoResult = uploadWaypointPhotoUseCase(waypointId, photoBytes, photoName)) {
+                            is ApiResult.Success -> {
+                                updatedWaypoint = photoResult.data
+                            }
+                            is ApiResult.Error -> {
+                                GlobalErrorHandler.emit(photoResult.exception)
+                            }
+                        }
+                        _detailState.update { it.copy(isUploadingPhoto = false) }
+                    } else {
+                        _detailState.update { it.copy(isSubmittingVisit = false) }
+                    }
+
+                    // 3. Actualizar la ruta localmente
+                    _detailState.update { state ->
+                        state.copy(
+                            isSubmittingVisit = false,
+                            isUploadingPhoto  = false,
+                            route = state.route?.copy(
+                                waypoints = state.route.waypoints.map { w ->
+                                    if (w.id == waypointId) updatedWaypoint else w
+                                }
+                            )
+                        )
+                    }
+                    onComplete()
+                }
+                is ApiResult.Error -> {
+                    GlobalErrorHandler.emit(statusResult.exception)
+                    _detailState.update { it.copy(isSubmittingVisit = false) }
+                }
+            }
+        }
+    }
+
     fun markWaypointAsVisited(routeId: Int, waypointId: Int, comment: String? = null) {
         updateWaypointStatus(routeId, waypointId, WaypointStatus.VISITA, comment)
     }
@@ -219,12 +290,12 @@ class RouteViewModel(
         onComplete : () -> Unit = {}
     ) {
         viewModelScope.launch {
-            _detailState.update { it.copy(isLoading = true) }
+            _detailState.update { it.copy(isUploadingPhoto = true) }
             when (val result = uploadWaypointPhotoUseCase(waypointId, imageBytes, filename)) {
                 is ApiResult.Success -> {
                     _detailState.update { state ->
                         state.copy(
-                            isLoading = false,
+                            isUploadingPhoto = false,
                             route     = state.route?.copy(
                                 waypoints = state.route.waypoints.map { w ->
                                     if (w.id == waypointId) result.data else w
@@ -236,11 +307,32 @@ class RouteViewModel(
                 }
                 is ApiResult.Error -> {
                     GlobalErrorHandler.emit(result.exception)
-                    _detailState.update { it.copy(isLoading = false) }
+                    _detailState.update { it.copy(isUploadingPhoto = false) }
                 }
             }
         }
     }
+
+    /**
+     * Carga la URL pública de la foto del waypoint desde el servidor.
+     * Llama al endpoint GET /waypoints/{id}/photo y actualiza [loadedPhotoUrl].
+     */
+    fun loadWaypointPhotoUrl(waypointId: Int) {
+        viewModelScope.launch {
+            _detailState.update { it.copy(loadingPhotoForWaypointId = waypointId, loadedPhotoUrl = null) }
+            when (val result = getWaypointPhotoUrlUseCase(waypointId)) {
+                is ApiResult.Success -> {
+                    _detailState.update { it.copy(loadedPhotoUrl = result.data, loadingPhotoForWaypointId = null) }
+                }
+                is ApiResult.Error -> {
+                    GlobalErrorHandler.emit(result.exception)
+                    _detailState.update { it.copy(loadingPhotoForWaypointId = null) }
+                }
+            }
+        }
+    }
+
+    fun clearLoadedPhotoUrl() = _detailState.update { it.copy(loadedPhotoUrl = null, loadingPhotoForWaypointId = null) }
 
     fun clearFormError() = _formState.update { it.copy(error = null) }
     fun resetList() {

@@ -26,8 +26,10 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -58,7 +60,7 @@ fun ClientFormScreen(
     clientId        : Int?,
     onSaved         : () -> Unit,
     onBack          : () -> Unit,
-    onGetLocation   : (onResult: (Double, Double) -> Unit) -> Unit
+    onGetLocation   : (onResult: (Double?, Double?) -> Unit) -> Unit
 ) {
     val viewModel: ClientViewModel = koinViewModel()
     val formState by viewModel.formState.collectAsState()
@@ -335,7 +337,11 @@ fun ClientFormScreen(
                     onClick  = {
                         viewModel.startLocating()
                         onGetLocation { lat, lng ->
-                            viewModel.updateLocation(lat, lng)
+                            if (lat != null && lng != null) {
+                                viewModel.updateLocation(lat, lng)
+                            } else {
+                                viewModel.stopLocating()
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -415,8 +421,16 @@ fun <T> SMLGoDropdown(
             value            = selected?.let { display(it) } ?: "",
             onValueChange    = {},
             readOnly         = true,
-            label            = { Text(label) },
+            label            = { Text(label, color = Color.Black) },
             trailingIcon     = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            colors           = OutlinedTextFieldDefaults.colors(
+                focusedTextColor   = Color.Black,
+                unfocusedTextColor = Color.Black,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedLabelColor  = Color.Black,
+                unfocusedLabelColor = Color.DarkGray
+            ),
             modifier         = Modifier.menuAnchor(
                 ExposedDropdownMenuAnchorType.PrimaryNotEditable,
                 enabled = true
@@ -424,12 +438,16 @@ fun <T> SMLGoDropdown(
         )
         ExposedDropdownMenu(
             expanded         = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            containerColor   = Color.White
         ) {
             options.forEach { option ->
                 DropdownMenuItem(
-                    text    = { Text(display(option)) },
-                    onClick = { onSelect(option); expanded = false }
+                    text    = { Text(display(option), color = Color.Black, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium) },
+                    onClick = { onSelect(option); expanded = false },
+                    colors  = MenuDefaults.itemColors(
+                        textColor = Color.Black
+                    )
                 )
             }
         }

@@ -23,7 +23,9 @@ class UpdateWaypointStatusUseCase(private val repository: WaypointRepository) {
         routeId    : Int,
         waypointId : Int,
         status     : WaypointStatus,
-        comment    : String?
+        comment    : String? = null,
+        latitude   : Double? = null,
+        longitude  : Double? = null
     ): ApiResult<Waypoint> {
         if (status == WaypointStatus.PENDIENTE) return ApiResult.Error(
             ApiError.UnknownError("No se puede revertir el estado a PENDIENTE")
@@ -32,7 +34,9 @@ class UpdateWaypointStatusUseCase(private val repository: WaypointRepository) {
             routeId    = routeId,
             waypointId = waypointId,
             status     = status,
-            comment    = comment
+            comment    = comment,
+            latitude   = latitude,
+            longitude  = longitude
         )
     }
 }
@@ -54,5 +58,14 @@ class UploadWaypointPhotoUseCase(private val repository: WaypointRepository) {
             imageBytes = imageBytes,
             filename   = filename
         )
+    }
+}
+
+class GetWaypointPhotoUrlUseCase(private val repository: WaypointRepository) {
+    suspend operator fun invoke(waypointId: Int): ApiResult<String> {
+        if (waypointId <= 0) return ApiResult.Error(
+            ApiError.UnknownError("ID de waypoint inválido")
+        )
+        return repository.getWaypointPhotoUrl(waypointId)
     }
 }

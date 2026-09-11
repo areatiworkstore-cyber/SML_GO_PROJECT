@@ -9,7 +9,7 @@ import org.smlpartners.smlgo.ui.shared.GlobalErrorWrapper
 @Composable
 @Preview
 fun App(
-    onGetLocation: (onResult: (Double, Double) -> Unit) -> Unit = { _ -> }
+    onGetLocation: (onResult: (Double?, Double?) -> Unit) -> Unit = { _ -> }
 ) {
     SMLGoTheme {
         GlobalErrorWrapper(
