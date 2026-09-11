@@ -450,6 +450,22 @@ export const SellerAudit: React.FC = () => {
                                   </Box>
                                 )}
 
+                                {/* 📍 GPS REGISTRADO POR EL VENDEDOR */}
+                                {wp.latitud != null && wp.longitud != null && (
+                                  <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                                      GPS Vendedor:
+                                    </Typography>
+                                    <MapButton
+                                      latitude={wp.latitud}
+                                      longitude={wp.longitud}
+                                      label="Ver GPS Vendedor en Google Maps"
+                                      size="small"
+                                      variant="outlined"
+                                    />
+                                  </Box>
+                                )}
+
                                 {/* 📸 IMAGEN EVIDENCIA */}
                                 {wp.url_photo && (
                                   <Box sx={{ mt: 2 }}>
